@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>獎勵系統 Demo - 使用情境示範</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #FF6B6B;
+            --secondary: #4ECDC4;
+            --accent: #FFE66D;
+            --success: #51CF66;
+            --bg: #FFF8F6;
+            --card: #FFFFFF;
+            --text: #2C3E50;
+            --text-light: #7F8C8D;
+            --border: #ECE8E1;
+            --radius: 14px;
+            --shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 420px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background: white;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, #FF8E53 100%);
+            color: white;
+            padding: 20px 16px 16px;
+            text-align: center;
+        }
+        .header h1 { font-size: 22px; font-weight: 700; }
+        .header p { font-size: 13px; opacity: 0.9; margin-top: 4px; }
+
+        /* Scene navigation */
+        .scene-nav {
+            display: flex;
+            gap: 0;
+            background: white;
+            border-bottom: 2px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .scene-btn {
+            flex: 1;
+            padding: 12px 4px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-light);
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        .scene-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background: #FFF0F0;
+        }
+        .scene-btn .num {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            line-height: 20px;
+            border-radius: 50%;
+            background: var(--border);
+            color: var(--text-light);
+            font-size: 11px;
+            margin-bottom: 2px;
+        }
+        .scene-btn.active .num {
+            background: var(--primary);
+            color: white;
+        }
+        .scene-btn.done .num {
+            background: var(--success);
+            color: white;
+        }
+
+        /* Scene content */
+        .scene { display: none; padding: 16px; animation: fadeIn 0.3s; }
+        .scene.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .scene-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .scene-desc {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Role badge */
+        .role-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .role-parent { background: #E8F5E9; color: #2E7D32; }
+        .role-kid { background: #FFF3E0; color: #E65100; }
+
+        /* Mock phone screen */
+        .phone-mock {
+            background: var(--bg);
+            border-radius: 20px;
+            border: 3px solid #333;
+            padding: 12px;
+            margin: 12px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .phone-mock::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: #333;
+            border-radius: 0 0 4px 4px;
+        }
+
+        /* Task rows in demo */
+        .demo-task {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s;
+        }
+        .demo-task.highlighted {
+            border: 2px solid var(--primary);
+            background: #FFF5F5;
+        }
+        .demo-task-info { flex: 1; }
+        .demo-task-name { font-weight: 600; font-size: 14px; }
+        .demo-task-pts { font-size: 12px; color: var(--text-light); }
+        .demo-counter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .demo-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .demo-btn:active, .demo-btn.pulse {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            transform: scale(1.1);
+        }
+        .demo-val {
+            font-size: 20px;
+            font-weight: 700;
+            min-width: 28px;
+            text-align: center;
+            color: var(--primary);
+        }
+
+        /* Points display */
+        .points-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent) 0%, #FFD93D 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 16px auto;
+            box-shadow: 0 4px 20px rgba(255,230,109,0.4);
+        }
+        .points-num { font-size: 36px; font-weight: 800; color: #333; }
+        .points-label { font-size: 12px; color: #666; }
+
+        /* Level display */
+        .level-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: var(--radius);
+            padding: 16px;
+            color: white;
+            text-align: center;
+            margin: 12px 0;
+        }
+        .level-icon { font-size: 48px; margin-bottom: 8px; }
+        .level-name { font-size: 18px; font-weight: 700; }
+        .level-sub { font-size: 12px; opacity: 0.8; }
+        .progress-outer {
+            height: 8px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 4px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+        .progress-inner {
+            height: 100%;
+            background: white;
+            border-radius: 4px;
+            transition: width 1s ease;
+        }
+
+        /* Weight config */
+        .weight-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            box-shadow: var(--shadow);
+        }
+        .weight-name { font-size: 14px; font-weight: 600; flex: 1; }
+        .weight-input {
+            width: 60px;
+            padding: 6px 8px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .weight-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .weight-unit { font-size: 12px; color: var(--text-light); margin-left: 4px; }
+
+        /* Arrow annotations */
+        .annotation {
+            background: #FFF9C4;
+            border-left: 4px solid var(--accent);
+            padding: 10px 12px;
+            border-radius: 0 8px 8px 0;
+            margin: 12px 0;
+            font-size: 13px;
+        }
+        .annotation strong { color: var(--primary); }
+
+        /* Navigation buttons */
+        .nav-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 20px;
+            padding: 16px 0;
+            border-top: 1px solid var(--border);
+        }
+        .nav-prev, .nav-next {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .nav-prev {
+            background: var(--border);
+            color: var(--text);
+        }
+        .nav-next {
+            background: linear-gradient(135deg, var(--primary), #FF8E53);
+            color: white;
+        }
+        .nav-next:active { transform: scale(0.98); }
+
+        /* Celebration */
+        .celebration {
+            text-align: center;
+            padding: 20px;
+        }
+        .confetti { font-size: 40px; animation: bounce 0.6s infinite alternate; }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-10px); } }
+
+        /* Month selector demo */
+        .month-tabs {
+            display: flex;
+            gap: 4px;
+            margin: 8px 0;
+            overflow-x: auto;
+        }
+        .month-tab {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            border: 2px solid var(--border);
+            background: white;
+            transition: all 0.2s;
+        }
+        .month-tab.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        /* Calendar grid */
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin: 8px 0;
+        }
+        .cal-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .cal-day.empty { background: transparent; }
+        .cal-day.has-data { background: #FFE0E0; color: var(--primary); }
+        .cal-day.high { background: var(--primary); color: white; }
+        .cal-day.today { border: 2px solid var(--primary); }
+
+        .summary-stat {
+            display: inline-block;
+            background: var(--bg);
+            padding: 8px 14px;
+            border-radius: 10px;
+            margin: 4px;
+            font-size: 13px;
+        }
+        .summary-stat strong { color: var(--primary); font-size: 18px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⭐ 獎勵系統使用情境</h1>
+            <p>跟著步驟看看家長和小孩怎麼使用</p>
+        </div>
+
+        <div class="scene-nav">
+            <button class="scene-btn active" onclick="goScene(1)" id="sceneBtn1">
+                <div class="num">1</div><br>家長設定
+            </button>
+            <button class="scene-btn" onclick="goScene(2)" id="sceneBtn2">
+                <div class="num">2</div><br>小孩打卡
+            </button>
+            <button class="scene-btn" onclick="goScene(3)" id="sceneBtn3">
+                <div class="num">3</div><br>累積成就
+            </button>
+            <button class="scene-btn" onclick="goScene(4)" id="sceneBtn4">
+                <div class="num">4</div><br>月結算
+            </button>
+        </div>
+
+        <!-- ========== SCENE 1: 家長設定 ========== -->
+        <div class="scene active" id="scene1">
+            <span class="role-badge role-parent">👨‍👩‍👧 家長操作</span>
+            <div class="scene-title">Step 1：每月目標設定</div>
+            <div class="scene-desc">家長可以在「設定」頁調整每月的任務積分權重，根據本月想培養的目標給予不同分數</div>
+
+            <div class="annotation">
+                💡 <strong>情境：</strong>這個月想加強孩子的英文朗讀能力，所以把英文朗讀的積分提高到 <strong>8 分</strong>，中文閱讀維持 5 分
+            </div>
+
+            <div class="phone-mock">
+                <div style="text-align:center; font-weight:700; margin-bottom:12px; color:var(--primary);">
+                    ⚙️ 本月積分設定 — 2026年4月
+                </div>
+
+                <div class="month-tabs">
+                    <div class="month-tab">3月</div>
+                    <div class="month-tab active">4月</div>
+                    <div class="month-tab">5月</div>
+                </div>
+
+                <div class="weight-row" style="border:2px solid var(--success);">
+                    <div class="weight-name">📖 指定中文1本</div>
+                    <input type="number" class="weight-input" value="5" id="w1">
+                    <span class="weight-unit">點</span>
+                </div>
+                <div class="weight-row">
+                    <div class="weight-name">📚 隨意中文1本</div>
+                    <input type="number" class="weight-input" value="3" id="w2">
+                    <span class="weight-unit">點</span>
+                </div>
+                <div class="weight-row" style="border:2px solid var(--primary); background:#FFF5F5;">
+                    <div class="weight-name">🔊 英文朗讀1本</div>
+                    <input type="number" class="weight-input" value="8" id="w3" style="color:#E53935; font-size:20px;">
+                    <span class="weight-unit">點 ⬆️</span>
+                </div>
+                <div class="weight-row">
+                    <div class="weight-name">👂 英文聽2本</div>
+                    <input type="number" class="weight-input" value="1" id="w4">
+                    <span class="weight-unit">點</span>
+                </div>
+                <div class="weight-row">
+                    <div class="weight-name">📗 英文閱讀1本</div>
+                    <input type="number" class="weight-input" value="2" id="w5">
+                    <span class="weight-unit">點</span>
+                </div>
+                <div class="weight-row">
+                    <div class="weight-name">🌅 早起/ICRT</div>
+                    <input type="number" class="weight-input" value="1" id="w6">
+                    <span class="weight-unit">點</span>
+                </div>
+
+                <div style="text-align:center; margin-top:12px;">
+                    <button onclick="animateSave()" style="background:linear-gradient(135deg,var(--success),var(--secondary)); color:white; border:none; padding:12px 32px; border-radius:12px; font-size:15px; font-weight:600; cursor:pointer;" id="saveBtn">
+                        💾 儲存本月設定
+                    </button>
+                </div>
+            </div>
+
+            <div class="annotation">
+                ⚡ <strong>重點：</strong>每個月初家長可以根據目標調整積分。想加強哪個項目，就把那個項目的分數調高，小孩自然會為了拿高分而多做那個任務！
+            </div>
+
+            <div class="nav-actions">
+                <button class="nav-prev" disabled style="opacity:0.3">← 上一步</button>
+                <button class="nav-next" onclick="goScene(2)">下一步：小孩打卡 →</button>
+            </div>
+        </div>
+
+        <!-- ========== SCENE 2: 小孩打卡 ========== -->
+        <div class="scene" id="scene2">
+            <span class="role-badge role-kid">👧 小孩操作</span>
+            <div class="scene-title">Step 2：每日閱讀打卡</div>
+            <div class="scene-desc">小孩讀完書後，自己打開手機按 + 記錄。點一下就得到對應積分！</div>
+
+            <div class="annotation">
+                💡 <strong>情境：</strong>今天小孩讀了 1 本指定中文書、朗讀了 2 本英文書。按下 + 馬上看到積分增加！
+            </div>
+
+            <div class="phone-mock">
+                <div style="text-align:center; margin-bottom:12px;">
+                    <div style="font-size:13px; color:var(--text-light);">2026年4月19日 星期六</div>
+                    <div style="font-size:15px; font-weight:700; margin-top:4px;">📝 今日打卡</div>
+                </div>
+
+                <div class="demo-task highlighted" id="task1">
+                    <div class="demo-task-info">
+                        <div class="demo-task-name">📖 指定中文1本</div>
+                        <div class="demo-task-pts">5點 × <span id="t1c">0</span> = <span id="t1p">0</span> 點</div>
+                    </div>
+                    <div class="demo-counter">
+                        <button class="demo-btn" onclick="demoMinus(1)">−</button>
+                        <div class="demo-val" id="t1v">0</div>
+                        <button class="demo-btn" onclick="demoPlus(1)" id="t1btn">+</button>
+                    </div>
+                </div>
+
+                <div class="demo-task">
+                    <div class="demo-task-info">
+                        <div class="demo-task-name">📚 隨意中文1本</div>
+                        <div class="demo-task-pts">3點 × <span id="t2c">0</span> = <span id="t2p">0</span> 點</div>
+                    </div>
+                    <div class="demo-counter">
+                        <button class="demo-btn" onclick="demoMinus(2)">−</button>
+                        <div class="demo-val" id="t2v">0</div>
+                        <button class="demo-btn" onclick="demoPlus(2)">+</button>
+                    </div>
+                </div>
+
+                <div class="demo-task highlighted" id="task3">
+                    <div class="demo-task-info">
+                        <div class="demo-task-name">🔊 英文朗讀1本</div>
+                        <div class="demo-task-pts" style="color:var(--primary);">8點 × <span id="t3c">0</span> = <span id="t3p">0</span> 點 ⭐加倍月</div>
+                    </div>
+                    <div class="demo-counter">
+                        <button class="demo-btn" onclick="demoMinus(3)">−</button>
+                        <div class="demo-val" id="t3v">0</div>
+                        <button class="demo-btn" onclick="demoPlus(3)" id="t3btn">+</button>
+                    </div>
+                </div>
+
+                <div class="demo-task">
+                    <div class="demo-task-info">
+                        <div class="demo-task-name">👂 英文聽2本</div>
+                        <div class="demo-task-pts">1點 × <span id="t4c">0</span> = <span id="t4p">0</span> 點</div>
+                    </div>
+                    <div class="demo-counter">
+                        <button class="demo-btn" onclick="demoMinus(4)">−</button>
+                        <div class="demo-val" id="t4v">0</div>
+                        <button class="demo-btn" onclick="demoPlus(4)">+</button>
+                    </div>
+                </div>
+
+                <div class="demo-task">
+                    <div class="demo-task-info">
+                        <div class="demo-task-name">📗 英文閱讀1本</div>
+                        <div class="demo-task-pts">2點 × <span id="t5c">0</span> = <span id="t5p">0</span> 點</div>
+                    </div>
+                    <div class="demo-counter">
+                        <button class="demo-btn" onclick="demoMinus(5)">−</button>
+                        <div class="demo-val" id="t5v">0</div>
+                        <button class="demo-btn" onclick="demoPlus(5)">+</button>
+                    </div>
+                </div>
+
+                <div class="demo-task">
+                    <div class="demo-task-info">
+                        <div class="demo-task-name">🌅 早起/ICRT</div>
+                        <div class="demo-task-pts">1點 × <span id="t6c">0</span> = <span id="t6p">0</span> 點</div>
+                    </div>
+                    <div class="demo-counter">
+                        <button class="demo-btn" onclick="demoMinus(6)">−</button>
+                        <div class="demo-val" id="t6v">0</div>
+                        <button class="demo-btn" onclick="demoPlus(6)">+</button>
+                    </div>
+                </div>
+
+                <div class="points-circle" id="pointsCircle">
+                    <div class="points-num" id="totalPts">0</div>
+                    <div class="points-label">今日積分</div>
+                </div>
+                <div style="text-align:center; font-size:14px; color:var(--text-light);" id="encourageMsg">
+                    快來開始閱讀吧！📚
+                </div>
+            </div>
+
+            <div class="annotation">
+                🎯 <strong>小孩的參與感：</strong>每按一下 + 就能看到數字跳動、積分增加，像遊戲一樣有趣！英文朗讀這個月是 8 分，所以小孩會更有動力去朗讀。<br><br>
+                👆 <strong>試試看：</strong>按上面的 + 按鈕體驗一下！
+            </div>
+
+            <div class="nav-actions">
+                <button class="nav-prev" onclick="goScene(1)">← 上一步</button>
+                <button class="nav-next" onclick="goScene(3)">下一步：累積成就 →</button>
+            </div>
+        </div>
+
+        <!-- ========== SCENE 3: 累積成就 ========== -->
+        <div class="scene" id="scene3">
+            <span class="role-badge role-kid">👧 小孩查看</span>
+            <div class="scene-title">Step 3：等級成就系統</div>
+            <div class="scene-desc">累積的積分會解鎖不同等級，讓小孩有持續進步的動力</div>
+
+            <div class="phone-mock">
+                <div class="level-card" id="levelDemo">
+                    <div class="level-icon" id="lvIcon">🌳</div>
+                    <div class="level-name" id="lvName">知識探險家</div>
+                    <div class="level-sub" id="lvSub">累積 1,375 點</div>
+                    <div class="progress-outer">
+                        <div class="progress-inner" id="lvBar" style="width: 77%"></div>
+                    </div>
+                    <div style="font-size:11px; opacity:0.7; margin-top:6px;" id="lvNext">距離下一級「閱讀達人」還需 225 點</div>
+                </div>
+
+                <div style="font-size:14px; font-weight:700; margin:12px 0 8px;">🏆 等級列表</div>
+
+                <div style="background:var(--bg); border-radius:12px; padding:8px;">
+                    <div style="display:flex; align-items:center; padding:8px; opacity:0.5;">
+                        <span style="font-size:24px; margin-right:10px;">🌱</span>
+                        <div><div style="font-size:13px; font-weight:600;">小書蟲</div><div style="font-size:11px; color:var(--text-light);">0 - 100 點 ✅ 已達成</div></div>
+                    </div>
+                    <div style="display:flex; align-items:center; padding:8px; opacity:0.5;">
+                        <span style="font-size:24px; margin-right:10px;">🌿</span>
+                        <div><div style="font-size:13px; font-weight:600;">閱讀新星</div><div style="font-size:11px; color:var(--text-light);">101 - 300 點 ✅ 已達成</div></div>
+                    </div>
+                    <div style="display:flex; align-items:center; padding:8px; background:#E8F5E9; border-radius:8px; border:2px solid var(--success);">
+                        <span style="font-size:24px; margin-right:10px;">🌳</span>
+                        <div><div style="font-size:13px; font-weight:600; color:var(--success);">知識探險家 ← 目前</div><div style="font-size:11px; color:var(--text-light);">301 - 600 點 (1,375 / 1,600)</div></div>
+                    </div>
+                    <div style="display:flex; align-items:center; padding:8px;">
+                        <span style="font-size:24px; margin-right:10px;">🏆</span>
+                        <div><div style="font-size:13px; font-weight:600;">閱讀達人</div><div style="font-size:11px; color:var(--text-light);">601 - 1,000 點</div></div>
+                    </div>
+                    <div style="display:flex; align-items:center; padding:8px;">
+                        <span style="font-size:24px; margin-right:10px;">👑</span>
+                        <div><div style="font-size:13px; font-weight:600;">書香大師</div><div style="font-size:11px; color:var(--text-light);">1,001 - 1,500 點</div></div>
+                    </div>
+                    <div style="display:flex; align-items:center; padding:8px;">
+                        <span style="font-size:24px; margin-right:10px;">🌟</span>
+                        <div><div style="font-size:13px; font-weight:600;">超級閱讀王</div><div style="font-size:11px; color:var(--text-light);">1,500 點以上</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="annotation">
+                🎮 <strong>遊戲化設計：</strong>等級會讓小孩有「升級」的期待感。你的小孩已經累積了 1,375 點（從11月到現在的歷史資料），目前是<strong>知識探險家</strong>等級！再 225 點就能升級成<strong>閱讀達人</strong>。
+            </div>
+
+            <div class="nav-actions">
+                <button class="nav-prev" onclick="goScene(2)">← 上一步</button>
+                <button class="nav-next" onclick="goScene(4)">下一步：月結算 →</button>
+            </div>
+        </div>
+
+        <!-- ========== SCENE 4: 月結算 ========== -->
+        <div class="scene" id="scene4">
+            <span class="role-badge role-parent">👨‍👩‍👧 家長操作</span>
+            <div class="scene-title">Step 4：每月結算</div>
+            <div class="scene-desc">月底家長可以查看統計、給獎勵，然後設定下個月的新目標</div>
+
+            <div class="phone-mock">
+                <div style="text-align:center; font-weight:700; margin-bottom:12px; color:var(--primary);">
+                    📊 2026年4月 月結算
+                </div>
+
+                <div style="text-align:center; margin-bottom:16px;">
+                    <div class="summary-stat">本月積分 <br><strong>135</strong></div>
+                    <div class="summary-stat">活躍天數 <br><strong>12</strong>/19</div>
+                    <div class="summary-stat">最佳一天 <br><strong>29點</strong></div>
+                </div>
+
+                <div style="font-size:14px; font-weight:700; margin-bottom:8px;">📅 本月日曆</div>
+                <div class="cal-grid">
+                    <div class="cal-day" style="color:var(--text-light); font-size:10px;">日</div>
+                    <div class="cal-day" style="color:var(--text-light); font-size:10px;">一</div>
+                    <div class="cal-day" style="color:var(--text-light); font-size:10px;">二</div>
+                    <div class="cal-day" style="color:var(--text-light); font-size:10px;">三</div>
+                    <div class="cal-day" style="color:var(--text-light); font-size:10px;">四</div>
+                    <div class="cal-day" style="color:var(--text-light); font-size:10px;">五</div>
+                    <div class="cal-day" style="color:var(--text-light); font-size:10px;">六</div>
+                    <div class="cal-day empty"></div>
+                    <div class="cal-day empty"></div>
+                    <div class="cal-day empty"></div>
+                    <div class="cal-day has-data">1</div>
+                    <div class="cal-day">2</div>
+                    <div class="cal-day">3</div>
+                    <div class="cal-day has-data">4</div>
+                    <div class="cal-day high">5</div>
+                    <div class="cal-day high">6</div>
+                    <div class="cal-day has-data">7</div>
+                    <div class="cal-day has-data">8</div>
+                    <div class="cal-day has-data">9</div>
+                    <div class="cal-day high">10</div>
+                    <div class="cal-day has-data">11</div>
+                    <div class="cal-day has-data">12</div>
+                    <div class="cal-day has-data">13</div>
+                    <div class="cal-day has-data">14</div>
+                    <div class="cal-day has-data">15</div>
+                    <div class="cal-day has-data">16</div>
+                    <div class="cal-day has-data">17</div>
+                    <div class="cal-day">18</div>
+                    <div class="cal-day today">19</div>
+                    <div class="cal-day">20</div>
+                    <div class="cal-day">21</div>
+                    <div class="cal-day">22</div>
+                    <div class="cal-day">23</div>
+                    <div class="cal-day">24</div>
+                    <div class="cal-day">25</div>
+                    <div class="cal-day">26</div>
+                    <div class="cal-day">27</div>
+                    <div class="cal-day">28</div>
+                    <div class="cal-day">29</div>
+                    <div class="cal-day">30</div>
+                </div>
+
+                <div style="font-size:14px; font-weight:700; margin:12px 0 8px;">📈 各項任務統計</div>
+                <div style="background:var(--bg); border-radius:12px; padding:12px;">
+                    <div style="margin-bottom:8px;">
+                        <div style="display:flex; justify-content:space-between; font-size:12px;">
+                            <span>🔊 英文朗讀 (8pt/次)</span><span style="font-weight:700; color:var(--primary);">13次 = 104點</span>
+                        </div>
+                        <div style="height:6px; background:var(--border); border-radius:3px; margin-top:4px;">
+                            <div style="height:100%; width:77%; background:var(--primary); border-radius:3px;"></div>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <div style="display:flex; justify-content:space-between; font-size:12px;">
+                            <span>📖 指定中文 (5pt/次)</span><span style="font-weight:700;">4次 = 20點</span>
+                        </div>
+                        <div style="height:6px; background:var(--border); border-radius:3px; margin-top:4px;">
+                            <div style="height:100%; width:15%; background:var(--secondary); border-radius:3px;"></div>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <div style="display:flex; justify-content:space-between; font-size:12px;">
+                            <span>📚 隨意中文 (3pt/次)</span><span style="font-weight:700;">5次 = 15點</span>
+                        </div>
+                        <div style="height:6px; background:var(--border); border-radius:3px; margin-top:4px;">
+                            <div style="height:100%; width:11%; background:var(--secondary); border-radius:3px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation" style="margin-top:12px;">
+                    ✅ 這個月加倍英文朗讀的策略有效！小孩朗讀了 13 次，佔了總積分的 77%。<br>
+                    下個月可以改成加倍中文指定閱讀。
+                </div>
+            </div>
+
+            <div class="celebration" id="celebrationArea">
+                <div class="confetti">🎊</div>
+                <div style="font-size:18px; font-weight:700; margin:8px 0;">月結完成！</div>
+                <div style="font-size:13px; color:var(--text-light);">
+                    家長可以根據積分兌換獎勵（如零用錢、特別活動等），<br>
+                    然後設定下個月的新目標和權重！
+                </div>
+            </div>
+
+            <div style="background:#E3F2FD; border-radius:var(--radius); padding:16px; margin-top:12px;">
+                <div style="font-size:15px; font-weight:700; margin-bottom:8px;">💡 獎勵兌換建議</div>
+                <div style="font-size:13px; line-height:1.8;">
+                    • 每 <strong>1 點 = 1 元</strong>（像你目前的做法）<br>
+                    • 累積 300 點 → 選一本新書當獎勵<br>
+                    • 累積 500 點 → 一次特別出遊<br>
+                    • 升級成功 → 額外獎勵金 100 元<br>
+                    • 月度全勤（每天都有打卡）→ 特別獎
+                </div>
+            </div>
+
+            <div class="nav-actions">
+                <button class="nav-prev" onclick="goScene(3)">← 上一步</button>
+                <button class="nav-next" onclick="goScene(1)">🔄 從頭看一次</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const taskPts = [5, 3, 8, 1, 2, 1];
+        const counts = [0, 0, 0, 0, 0, 0];
+
+        function demoPlus(idx) {
+            counts[idx - 1]++;
+            updateTaskDisplay(idx);
+            animateBtn(`t${idx}btn`);
+        }
+
+        function demoMinus(idx) {
+            if (counts[idx - 1] > 0) counts[idx - 1]--;
+            updateTaskDisplay(idx);
+        }
+
+        function updateTaskDisplay(idx) {
+            const c = counts[idx - 1];
+            const p = c * taskPts[idx - 1];
+            document.getElementById(`t${idx}c`).textContent = c;
+            document.getElementById(`t${idx}p`).textContent = p;
+            document.getElementById(`t${idx}v`).textContent = c;
+
+            const total = counts.reduce((s, c, i) => s + c * taskPts[i], 0);
+            document.getElementById('totalPts').textContent = total;
+
+            const circle = document.getElementById('pointsCircle');
+            circle.style.transform = 'scale(1.05)';
+            setTimeout(() => circle.style.transform = 'scale(1)', 200);
+
+            const msg = document.getElementById('encourageMsg');
+            if (total === 0) msg.textContent = '快來開始閱讀吧！📚';
+            else if (total < 10) msg.textContent = '好的開始！繼續加油 💪';
+            else if (total < 20) msg.textContent = '不錯喔！已經超過10分了 🌟';
+            else if (total < 30) msg.textContent = '太厲害了！你超棒的 🔥';
+            else msg.textContent = '哇！今天是超級閱讀日！🦸‍♀️✨';
+        }
+
+        function animateBtn(id) {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.classList.add('pulse');
+                setTimeout(() => btn.classList.remove('pulse'), 200);
+            }
+        }
+
+        function animateSave() {
+            const btn = document.getElementById('saveBtn');
+            btn.textContent = '✅ 已儲存！';
+            btn.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
+            setTimeout(() => {
+                btn.textContent = '💾 儲存本月設定';
+                btn.style.background = 'linear-gradient(135deg, var(--success), var(--secondary))';
+            }, 1500);
+        }
+
+        function goScene(num) {
+            document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.scene-btn').forEach(b => {
+                b.classList.remove('active');
+            });
+
+            document.getElementById(`scene${num}`).classList.add('active');
+            document.getElementById(`sceneBtn${num}`).classList.add('active');
+
+            // Mark previous as done
+            for (let i = 1; i < num; i++) {
+                document.getElementById(`sceneBtn${i}`).classList.add('done');
+            }
+            for (let i = num; i <= 4; i++) {
+                document.getElementById(`sceneBtn${i}`).classList.remove('done');
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
