@@ -1025,9 +1025,15 @@
     </style>
 </head>
 <body>
+    <!-- Splash Screen -->
+    <!-- Visitor Banner -->
+    <div id="visitorBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:500; background:#FF9800; color:white; text-align:center; padding:6px 12px; font-size:13px; font-weight:600; max-width:480px; margin:0 auto;">
+        👀 訪客模式（僅供瀏覽）
+    </div>
+
     <div class="container">
         <!-- Header -->
-        <div class="header">
+        <div class="header" id="appHeader">
             <h1>📚 書籍管理</h1>
             <p id="headerSubtitle">兒童藏書庫</p>
         </div>
@@ -1315,12 +1321,12 @@
         </div>
 
         <!-- Navigation Bar -->
-        <div class="nav-bar">
+        <div class="nav-bar" id="navBar">
             <div class="nav-btn active" onclick="switchTab('library')">
                 <div class="nav-btn-icon">📚</div>
                 <div>書庫</div>
             </div>
-            <div class="nav-btn" onclick="switchTab('addBook')">
+            <div class="nav-btn owner-only" onclick="switchTab('addBook')">
                 <div class="nav-btn-icon">➕</div>
                 <div>新增</div>
             </div>
@@ -1332,7 +1338,7 @@
                 <div class="nav-btn-icon">⭐</div>
                 <div>獎勵</div>
             </div>
-            <div class="nav-btn" onclick="switchTab('settings')">
+            <div class="nav-btn owner-only" onclick="switchTab('settings')">
                 <div class="nav-btn-icon">⚙️</div>
                 <div>設定</div>
             </div>
@@ -1487,6 +1493,31 @@
             sort: 'date-newest'
         };
 
+        // ===== VISITOR / OWNER MODE =====
+        // URL 帶 ?owner 參數 = 管理員模式，否則為訪客模式
+        let isVisitor = !new URLSearchParams(window.location.search).has('owner');
+
+        function applyVisitorMode() {
+            if (isVisitor) {
+                document.getElementById('visitorBanner').style.display = 'block';
+                document.getElementById('appHeader').style.marginTop = '32px';
+                document.querySelectorAll('.owner-only').forEach(el => el.style.display = 'none');
+            } else {
+                document.getElementById('visitorBanner').style.display = 'none';
+                document.getElementById('appHeader').style.marginTop = '0';
+                document.querySelectorAll('.owner-only').forEach(el => el.style.display = '');
+            }
+        }
+
+        // Guard: block all data writes in visitor mode
+        function ownerOnly() {
+            if (isVisitor) {
+                showToast('⚠️ 訪客模式無法操作');
+                return true; // blocked
+            }
+            return false; // allowed
+        }
+
         // ===== INITIALIZATION =====
         function init() {
             loadFromStorage();
@@ -1532,14 +1563,17 @@
         }
 
         function saveBooks() {
+            if (isVisitor) return;
             localStorage.setItem('books', JSON.stringify(books));
         }
 
         function saveRewards() {
+            if (isVisitor) return;
             localStorage.setItem('rewards', JSON.stringify(rewards));
         }
 
         function saveRewardTasks() {
+            if (isVisitor) return;
             localStorage.setItem('rewardTasks', JSON.stringify(rewardTasks));
         }
 
@@ -1691,7 +1725,7 @@
                     <div class="book-details">
                         <div class="detail-row">
                             <span class="detail-label">買入價:</span>
-                            <span class="detail-value">NT$${Math.floor(book.price)}</span>
+                            <span class="detail-value">${isVisitor ? '*****' : 'NT$' + Math.floor(book.price)}</span>
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">購買日:</span>
@@ -1712,7 +1746,7 @@
                         ${book.soldPrice ? `
                             <div class="detail-row">
                                 <span class="detail-label">售出價:</span>
-                                <span class="detail-value">NT$${Math.floor(Math.abs(book.soldPrice))}</span>
+                                <span class="detail-value">${isVisitor ? '*****' : 'NT$' + Math.floor(Math.abs(book.soldPrice))}</span>
                             </div>
                             <div class="detail-row">
                                 <span class="detail-label">售出日:</span>
@@ -1723,10 +1757,10 @@
 
                     ${book.note ? `<div class="book-note">📝 ${escapeHtml(book.note)}</div>` : ''}
 
-                    <div class="book-actions">
+                    ${!isVisitor ? `<div class="book-actions">
                         <button class="btn-small btn-edit" onclick="openEditBook(${book.id})">✏️ 編輯</button>
                         <button class="btn-small btn-delete" onclick="deleteBook(${book.id})">🗑️ 刪除</button>
-                    </div>
+                    </div>` : ''}
                 </div>
             `).join('');
         }
@@ -1752,6 +1786,7 @@
         }
 
         function saveEditedBook() {
+            if (ownerOnly()) return;
             if (!currentEditId) return;
 
             const book = books.find(b => b.id === currentEditId);
@@ -1804,6 +1839,7 @@
         }
 
         function deleteBook(id) {
+            if (ownerOnly()) return;
             if (!confirm('確定要刪除這本書嗎?')) return;
             books = books.filter(b => b.id !== id);
             saveBooks();
@@ -1872,6 +1908,7 @@
         }
 
         function addNewBook() {
+            if (ownerOnly()) return;
             const title = document.getElementById('titleInput').value;
             const publisher = document.getElementById('publisherInput').value;
             const platform = document.getElementById('platformInput').value || publisher;
@@ -1942,9 +1979,9 @@
             }, 0);
             const netCost = totalPurchase - totalSold;
 
-            document.getElementById('totalPurchaseValue').textContent = `NT$${Math.floor(totalPurchase)}`;
-            document.getElementById('totalSoldValue').textContent = `NT$${Math.floor(totalSold)}`;
-            document.getElementById('netCostValue').textContent = `NT$${Math.floor(netCost)}`;
+            document.getElementById('totalPurchaseValue').textContent = isVisitor ? '*****' : `NT$${Math.floor(totalPurchase)}`;
+            document.getElementById('totalSoldValue').textContent = isVisitor ? '*****' : `NT$${Math.floor(totalSold)}`;
+            document.getElementById('netCostValue').textContent = isVisitor ? '*****' : `NT$${Math.floor(netCost)}`;
 
             // Book statistics
             const totalBooks = books.length;
@@ -2093,6 +2130,7 @@
         }
 
         function savePin() {
+            if (ownerOnly()) return;
             const pin = document.getElementById('pinInput').value;
             if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
                 showToast('請輸入4位數字密碼');
@@ -2194,11 +2232,11 @@
                             ${confirmedCount > 0 ? `<div style="font-size:11px; color:#27AE60; margin-top:2px;">✓ 已確認: ${confirmedCount} 次 = ${confirmedCount * task.points} 點</div>` : ''}
                             ${pendingCount > 0 ? `<div class="preview-line">⏳ 待確認: ${pendingCount} 次 · 如果通過: +${pendingCount * task.points} 點</div>` : ''}
                         </div>
-                        <div class="task-counter">
+                        ${!isVisitor ? `<div class="task-counter">
                             <button class="counter-btn" onclick="removePending(${idx})">−</button>
                             <div class="counter-value">${pendingCount}</div>
                             <button class="counter-btn" onclick="addPending(${idx})">+</button>
-                        </div>
+                        </div>` : `<div style="font-size:12px; color:var(--color-text-light);">${confirmedCount}次</div>`}
                     </div>
                 `;
             }).join('');
@@ -2266,6 +2304,7 @@
         }
 
         function addPending(taskIdx) {
+            if (ownerOnly()) return;
             const monthKey = getMonthKey();
             const dayNum = new Date().getDate();
             ensureMonthData(monthKey);
@@ -2279,6 +2318,7 @@
         }
 
         function removePending(taskIdx) {
+            if (ownerOnly()) return;
             const monthKey = getMonthKey();
             const dayNum = new Date().getDate();
             ensureMonthData(monthKey);
@@ -2297,6 +2337,7 @@
         }
 
         function approveTask(taskIdx) {
+            if (ownerOnly()) return;
             const monthKey = getMonthKey();
             const dayNum = new Date().getDate();
             ensureMonthData(monthKey);
@@ -2318,6 +2359,7 @@
         }
 
         function rejectTask(taskIdx) {
+            if (ownerOnly()) return;
             const monthKey = getMonthKey();
             const dayNum = new Date().getDate();
             ensureMonthData(monthKey);
@@ -2421,6 +2463,7 @@
         }
 
         function saveEditedTasks() {
+            if (ownerOnly()) return;
             const monthKey = getMonthKey();
             ensureMonthData(monthKey);
 
@@ -2708,6 +2751,7 @@
         }
 
         function saveMonthWeights() {
+            if (ownerOnly()) return;
             const monthKey = document.getElementById('monthWeightSelector').value;
             const container = document.getElementById('monthWeightsContainer');
             const nameInputs = container.querySelectorAll('input[id^="monthWeightName_"]');
@@ -2831,6 +2875,7 @@
         }
 
         function importBooks(event) {
+            if (ownerOnly()) return;
             const file = event.target.files[0];
             if (!file) return;
 
@@ -2855,6 +2900,7 @@
         }
 
         function importRewards(event) {
+            if (ownerOnly()) return;
             const file = event.target.files[0];
             if (!file) return;
 
@@ -2877,6 +2923,7 @@
         }
 
         function clearAllData() {
+            if (ownerOnly()) return;
             if (!confirm('這會刪除所有資料！確定嗎?')) return;
             if (!confirm('最後確認：真的要清除所有資料嗎?')) return;
 
@@ -2912,7 +2959,11 @@
         }
 
         // Initialize on page load
-        window.addEventListener('DOMContentLoaded', init);
+        // URL 帶 ?owner → 管理員，否則 → 訪客（唯讀）
+        window.addEventListener('DOMContentLoaded', function() {
+            init();
+            applyVisitorMode();
+        });
     </script>
 
     <style>
