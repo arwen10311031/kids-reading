@@ -1354,9 +1354,9 @@
                 </div>
 
                 <div class="setting-group">
-                    <div class="setting-title">🎯 本月貝殼權重設定</div>
+                    <div class="setting-title">🎯 本月獎勵權重設定</div>
                     <div style="font-size:12px; color:var(--color-text-light); margin-bottom:8px;">
-                        每月可調整各任務的貝殼數，想加強哪個項目就調高
+                        每月可調整各任務的獎勵數，想加強哪個項目就調高（10🐚 = 1💎）
                     </div>
                     <div style="display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap;">
                         <select id="monthWeightSelector" class="filter-select" style="flex:1;" onchange="loadMonthWeights()"></select>
@@ -1492,8 +1492,14 @@
                     <input type="text" id="newTaskName" class="form-input" placeholder="例如：指定中文1本">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">貝殼數</label>
-                    <input type="number" id="newTaskPoints" class="form-input" placeholder="貝殼數" step="1" min="1">
+                    <label class="form-label">獎勵數量</label>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input type="number" id="newTaskPoints" class="form-input" placeholder="數量" step="1" min="1" style="flex:1;">
+                        <select id="newTaskCurrency" style="padding:8px 12px; border:2px solid var(--color-border); border-radius:8px; font-size:14px;">
+                            <option value="shell">🐚 貝殼</option>
+                            <option value="diamond">💎 鑽石</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -3094,15 +3100,19 @@
         function renderSettings() {
             // Render reward task management
             const container = document.getElementById('taskSettingsContainer');
-            container.innerHTML = rewardTasks.map((task, idx) => `
+            container.innerHTML = rewardTasks.map((task, idx) => {
+                const isDiamond = task.points >= 10 && task.points % 10 === 0;
+                const displayVal = isDiamond ? task.points / 10 : task.points;
+                const currencyIcon = isDiamond ? '💎' : '🐚';
+                return `
                 <div style="background: var(--color-border); padding: 8px; border-radius: var(--radius); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
                     <div style="font-size: 13px;">
                         <div style="font-weight: 600;">${escapeHtml(task.name)}</div>
-                        <div style="font-size: 11px; color: var(--color-text-light);">預設 ${task.points} 🐚</div>
+                        <div style="font-size: 11px; color: var(--color-text-light);">預設 ${displayVal} ${currencyIcon}</div>
                     </div>
                     <button class="counter-btn" onclick="deleteTask(${idx})" style="width: 24px; height: 24px;">✕</button>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
 
             // Render monthly weight selector
             renderMonthWeightSelector();
@@ -3138,16 +3148,23 @@
             const weights = getMonthWeights(monthKey);
             const container = document.getElementById('monthWeightsContainer');
 
-            container.innerHTML = weights.map((w, idx) => `
+            container.innerHTML = weights.map((w, idx) => {
+                const isDiamond = w.points >= 10 && w.points % 10 === 0;
+                const displayVal = isDiamond ? w.points / 10 : w.points;
+                const currency = isDiamond ? 'diamond' : 'shell';
+                return `
                 <div style="display:flex; align-items:center; gap:8px; background:var(--color-bg); padding:10px 12px; border-radius:10px; margin-bottom:6px;">
                     <input type="text" id="monthWeightName_${idx}" value="${escapeHtml(w.name)}"
                         style="flex:1; padding:6px 8px; border:2px solid var(--color-border); border-radius:8px; font-size:14px; font-weight:600;">
-                    <input type="number" id="monthWeight_${idx}" value="${w.points}" min="0" max="99"
+                    <input type="number" id="monthWeight_${idx}" value="${displayVal}" min="0" max="99"
                         style="width:56px; padding:6px 4px; border:2px solid var(--color-border); border-radius:8px; text-align:center; font-size:16px; font-weight:700; color:var(--color-primary);">
-                    <span style="font-size:12px; color:var(--color-text-light);">🐚</span>
+                    <select id="monthWeightCurrency_${idx}" style="padding:4px 2px; border:2px solid var(--color-border); border-radius:8px; font-size:13px;">
+                        <option value="shell" ${currency === 'shell' ? 'selected' : ''}>🐚</option>
+                        <option value="diamond" ${currency === 'diamond' ? 'selected' : ''}>💎</option>
+                    </select>
                     <button class="counter-btn" onclick="deleteMonthWeightTask(${idx})" style="width:24px; height:24px; flex-shrink:0;">✕</button>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
 
         function addMonthWeightTask() {
@@ -3159,7 +3176,10 @@
             row.innerHTML = `
                 <input type="text" id="monthWeightName_${idx}" value="新任務" style="flex:1; padding:6px 8px; border:2px solid var(--color-border); border-radius:8px; font-size:14px; font-weight:600;">
                 <input type="number" id="monthWeight_${idx}" value="1" min="0" max="99" style="width:56px; padding:6px 4px; border:2px solid var(--color-border); border-radius:8px; text-align:center; font-size:16px; font-weight:700; color:var(--color-primary);">
-                <span style="font-size:12px; color:var(--color-text-light);">🐚</span>
+                <select id="monthWeightCurrency_${idx}" style="padding:4px 2px; border:2px solid var(--color-border); border-radius:8px; font-size:13px;">
+                    <option value="shell">🐚</option>
+                    <option value="diamond">💎</option>
+                </select>
                 <button class="counter-btn" onclick="deleteMonthWeightTask(${idx})" style="width:24px; height:24px; flex-shrink:0;">✕</button>
             `;
             container.appendChild(row);
@@ -3174,8 +3194,10 @@
                 Array.from(container.children).forEach((row, newIdx) => {
                     const nameInput = row.querySelector('input[type="text"]');
                     const pointsInput = row.querySelector('input[type="number"]');
+                    const currencySelect = row.querySelector('select');
                     if (nameInput) nameInput.id = `monthWeightName_${newIdx}`;
                     if (pointsInput) pointsInput.id = `monthWeight_${newIdx}`;
+                    if (currencySelect) currencySelect.id = `monthWeightCurrency_${newIdx}`;
                     const btn = row.querySelector('button');
                     if (btn) btn.setAttribute('onclick', `deleteMonthWeightTask(${newIdx})`);
                 });
@@ -3191,9 +3213,13 @@
 
             nameInputs.forEach((nameInput, idx) => {
                 const pointsInput = document.getElementById(`monthWeight_${idx}`);
+                const currencySelect = document.getElementById(`monthWeightCurrency_${idx}`);
+                let points = parseInt(pointsInput ? pointsInput.value : 0) || 0;
+                const currency = currencySelect ? currencySelect.value : 'shell';
+                if (currency === 'diamond') points = points * 10;
                 weights.push({
                     name: nameInput.value || '未命名',
-                    points: parseInt(pointsInput ? pointsInput.value : 0) || 0
+                    points: points
                 });
             });
 
@@ -3243,16 +3269,23 @@
                 // Reload the container with previous month's tasks
                 const weights = rewards[prevKey].tasks.map(t => ({ name: t.name, points: t.points }));
                 const container = document.getElementById('monthWeightsContainer');
-                container.innerHTML = weights.map((w, idx) => `
+                container.innerHTML = weights.map((w, idx) => {
+                    const isDiamond = w.points >= 10 && w.points % 10 === 0;
+                    const displayVal = isDiamond ? w.points / 10 : w.points;
+                    const currency = isDiamond ? 'diamond' : 'shell';
+                    return `
                     <div style="display:flex; align-items:center; gap:8px; background:var(--color-bg); padding:10px 12px; border-radius:10px; margin-bottom:6px;">
                         <input type="text" id="monthWeightName_${idx}" value="${escapeHtml(w.name)}"
                             style="flex:1; padding:6px 8px; border:2px solid var(--color-border); border-radius:8px; font-size:14px; font-weight:600;">
-                        <input type="number" id="monthWeight_${idx}" value="${w.points}" min="0" max="99"
+                        <input type="number" id="monthWeight_${idx}" value="${displayVal}" min="0" max="99"
                             style="width:56px; padding:6px 4px; border:2px solid var(--color-border); border-radius:8px; text-align:center; font-size:16px; font-weight:700; color:var(--color-primary);">
-                        <span style="font-size:12px; color:var(--color-text-light);">🐚</span>
+                        <select id="monthWeightCurrency_${idx}" style="padding:4px 2px; border:2px solid var(--color-border); border-radius:8px; font-size:13px;">
+                            <option value="shell" ${currency === 'shell' ? 'selected' : ''}>🐚</option>
+                            <option value="diamond" ${currency === 'diamond' ? 'selected' : ''}>💎</option>
+                        </select>
                         <button class="counter-btn" onclick="deleteMonthWeightTask(${idx})" style="width:24px; height:24px; flex-shrink:0;">✕</button>
-                    </div>
-                `).join('');
+                    </div>`;
+                }).join('');
                 showToast(`📋 已載入 ${prevDate.getFullYear()}年${prevDate.getMonth()+1}月 的權重`);
             } else {
                 showToast('❌ 找不到上月的權重資料');
@@ -3262,17 +3295,21 @@
         function showAddTaskModal() {
             document.getElementById('newTaskName').value = '';
             document.getElementById('newTaskPoints').value = '1';
+            document.getElementById('newTaskCurrency').value = 'shell';
             openModal('addTaskModal');
         }
 
         function saveNewTask() {
             const name = document.getElementById('newTaskName').value;
-            const points = parseInt(document.getElementById('newTaskPoints').value);
+            let points = parseInt(document.getElementById('newTaskPoints').value);
+            const currency = document.getElementById('newTaskCurrency').value;
 
             if (!name || points < 1) {
                 showToast('❌ 請填寫完整資訊');
                 return;
             }
+
+            if (currency === 'diamond') points = points * 10;
 
             rewardTasks.push({ name, points });
 
@@ -3400,6 +3437,8 @@
         }
 
         function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const str = String(text);
             const map = {
                 '&': '&amp;',
                 '<': '&lt;',
@@ -3407,7 +3446,7 @@
                 '"': '&quot;',
                 "'": '&#039;'
             };
-            return text.replace(/[&<>"']/g, m => map[m]);
+            return str.replace(/[&<>"']/g, m => map[m]);
         }
 
         function normalizeDate(dateStr) {
