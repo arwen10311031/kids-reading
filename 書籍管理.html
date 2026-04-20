@@ -59,7 +59,8 @@
 
         /* ===== HEADER ===== */
         .header {
-            padding: 16px;
+            padding: 16px 16px calc(16px + env(safe-area-inset-top, 0px));
+            padding-top: calc(16px + env(safe-area-inset-top, 0px));
             background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
             color: white;
             text-align: center;
@@ -1058,7 +1059,7 @@
     </div>
 
     <!-- Mode Switch Button (floating) -->
-    <div id="modeSwitchBtn" style="display:none; position:fixed; top:8px; right:8px; z-index:500; background:rgba(0,0,0,0.5); color:white; border:none; border-radius:20px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; max-width:480px;" onclick="switchUserMode()">
+    <div id="modeSwitchBtn" style="display:none; position:fixed; top:calc(8px + env(safe-area-inset-top, 0px)); right:8px; z-index:500; background:rgba(0,0,0,0.5); color:white; border:none; border-radius:20px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; max-width:480px;" onclick="switchUserMode()">
         <span id="modeSwitchLabel">👧 小孩</span>
     </div>
 
@@ -1067,7 +1068,7 @@
         <div class="header" id="appHeader" style="position:relative;">
             <h1>📚 書籍管理</h1>
             <p id="headerSubtitle">兒童藏書庫</p>
-            <button onclick="refreshData()" id="refreshBtn" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.25); border:none; border-radius:50%; width:36px; height:36px; font-size:18px; cursor:pointer; color:white; display:flex; align-items:center; justify-content:center;">🔄</button>
+            <button onclick="refreshData()" id="refreshBtn" style="position:absolute; left:12px; bottom:12px; background:rgba(255,255,255,0.25); border:none; border-radius:50%; width:36px; height:36px; font-size:18px; cursor:pointer; color:white; display:flex; align-items:center; justify-content:center;">🔄</button>
         </div>
 
         <!-- Content Area -->
@@ -1762,7 +1763,7 @@
                 for (const rawKey of Object.keys(confirmed)) {
                     const mk = normalizeMonthKey(rawKey);
                     const src = confirmed[rawKey];
-                    if (!confByMonth[mk]) confByMonth[mk] = { tasks: [], total: 0 };
+                    if (!confByMonth[mk]) confByMonth[mk] = { tasks: [] };
                     (src.tasks || []).forEach(t => {
                         const existing = confByMonth[mk].tasks.find(x => x.name === t.name);
                         if (existing) {
@@ -1772,7 +1773,6 @@
                             confByMonth[mk].tasks.push({ name: t.name, points: t.points, daily: { ...(t.daily || {}) } });
                         }
                     });
-                    confByMonth[mk].total += (src.total || 0);
                 }
 
                 // Collect all pending tasks per normalized month
@@ -1794,7 +1794,7 @@
                 // Step 2: Merge confirmed + pending into rewards
                 const allNormalizedMonths = new Set([...Object.keys(confByMonth), ...Object.keys(pendByMonth)]);
                 for (const month of allNormalizedMonths) {
-                    const confMonth = confByMonth[month] || { tasks: [], total: 0 };
+                    const confMonth = confByMonth[month] || { tasks: [] };
                     const pendMonth = pendByMonth[month] || { tasks: [] };
 
                     const taskMap = {};
@@ -1808,7 +1808,13 @@
                         taskMap[t.name].pending = t.daily || {};
                     });
 
-                    rewards[month] = { tasks: Object.values(taskMap), total: confMonth.total || 0 };
+                    const tasks = Object.values(taskMap);
+                    // Always recalculate total from actual daily data (don't trust API total which may be inflated by duplicate rows)
+                    let total = 0;
+                    tasks.forEach(t => {
+                        Object.values(t.daily || {}).forEach(c => { total += c * t.points; });
+                    });
+                    rewards[month] = { tasks, total };
                 }
 
                 // Derive rewardTasks from latest month
