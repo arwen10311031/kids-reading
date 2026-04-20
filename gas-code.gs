@@ -6,6 +6,7 @@
 const SS_ID = '1eM_i2mf0aIW4oMG_sL2Hi9Z0NqG3bc6wAhE5RCoUhOQ';
 
 const BOOK_COLS = ['id','出版社','書名','已閱','購買日','買入價','購買平台','售出價','售出日','閱讀日','備註','再刷'];
+const TREASURE_COLS = ['id','日期','類型','鑽石','貝殼','備註','狀態'];
 const BOOK_MAP = {
   'id':'id','出版社':'publisher','書名':'title','已閱':'read',
   '購買日':'purchaseDate','買入價':'price','購買平台':'platform',
@@ -52,7 +53,8 @@ function doGet(e) {
       books: readBooks(),
       rewards: readRewardSheet('獎勵'),
       pending: readRewardSheet('待確認'),
-      settings: readSettings()
+      settings: readSettings(),
+      treasure: readTreasure()
     });
   } catch(err) {
     return json({ error: err.toString() });
@@ -70,10 +72,15 @@ function doPost(e) {
       case 'approveTask':   r = doApproveTask(d.month, d.taskName, d.day); break;
       case 'rejectTask':    r = doRejectTask(d.month, d.taskName, d.day); break;
       case 'ensureMonth':   r = ensureMonth(d.month, d.tasks); break;
+      case 'syncMonthTasks': r = syncMonthTasks(d.month, d.tasks); break;
       case 'updateTaskDef': r = updateTaskDef(d.month, d.oldName, d.newName, d.points); break;
       case 'deleteTaskDef': r = deleteTaskDef(d.month, d.taskName); break;
       case 'saveSetting':   r = saveSetting(d.key, d.value); break;
       case 'clearAll':      r = clearAll(); break;
+      case 'clearRewards':  r = clearRewardsOnly(); break;
+      case 'addTreasure':   r = addTreasure(d.date, d.type, d.diamonds, d.shells, d.note, d.status); break;
+      case 'approveTreasure': r = approveTreasureById(d.id); break;
+      case 'rejectTreasure':  r = rejectTreasureById(d.id); break;
       default: r = { error: 'Unknown action: ' + d.action };
     }
     return json(r);
@@ -293,6 +300,55 @@ function ensureMonth(month, tasks) {
   return { ok: true };
 }
 
+// ===== SYNC: Reconcile month tasks (delete extra, add missing, update points) =====
+
+function syncMonthTasks(month, tasks) {
+  var taskMap = {};
+  tasks.forEach(function(t) { taskMap[t.name] = t.points; });
+
+  ['獎勵','待確認'].forEach(function(sheetName) {
+    var sheet = getOrCreateSheet(sheetName, rewardHeaders());
+    var data = sheet.getDataRange().getValues();
+
+    // Pass 1: delete rows not in task list (reverse order to keep indices stable)
+    for (var r = data.length - 1; r >= 1; r--) {
+      if (normMonth(data[r][0]) === month) {
+        var name = String(data[r][1]).trim();
+        if (!(name in taskMap)) {
+          sheet.deleteRow(r + 1);
+        }
+      }
+    }
+
+    // Re-read after deletions
+    data = sheet.getDataRange().getValues();
+
+    // Pass 2: find existing tasks for this month
+    var existing = {};
+    for (var r2 = 1; r2 < data.length; r2++) {
+      if (normMonth(data[r2][0]) === month) {
+        var eName = String(data[r2][1]).trim();
+        existing[eName] = r2;
+        // Update points if changed
+        if (taskMap[eName] !== undefined && Number(data[r2][2]) !== taskMap[eName]) {
+          sheet.getRange(r2 + 1, 3).setValue(taskMap[eName]);
+        }
+      }
+    }
+
+    // Pass 3: add missing tasks
+    tasks.forEach(function(t) {
+      if (!existing[t.name]) {
+        var row = [month, t.name, t.points];
+        for (var i = 0; i < 31; i++) row.push('');
+        sheet.appendRow(row);
+      }
+    });
+  });
+
+  return { ok: true };
+}
+
 // ===== WRITE: Task definitions =====
 
 function updateTaskDef(month, oldName, newName, newPoints) {
@@ -349,4 +405,70 @@ function clearAll() {
     }
   });
   return { ok: true };
+}
+
+function clearRewardsOnly() {
+  ['獎勵','待確認'].forEach(function(name) {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sheet = ss.getSheetByName(name);
+    if (sheet && sheet.getLastRow() > 1) {
+      sheet.deleteRows(2, sheet.getLastRow() - 1);
+    }
+  });
+  return { ok: true };
+}
+
+// ===== Treasure Box (百寶箱) =====
+
+function readTreasure() {
+  const sheet = getOrCreateSheet('百寶箱', TREASURE_COLS);
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  return data.slice(1).map(function(row) {
+    return {
+      id: Number(row[0]) || 0,
+      date: fmtDate(row[1]),
+      type: String(row[2] || ''),
+      diamonds: Number(row[3]) || 0,
+      shells: Number(row[4]) || 0,
+      note: String(row[5] || ''),
+      status: String(row[6] || '已確認')
+    };
+  });
+}
+
+function addTreasure(date, type, diamonds, shells, note, status) {
+  const sheet = getOrCreateSheet('百寶箱', TREASURE_COLS);
+  const data = sheet.getDataRange().getValues();
+  var maxId = 0;
+  for (var r = 1; r < data.length; r++) {
+    maxId = Math.max(maxId, Number(data[r][0]) || 0);
+  }
+  var id = maxId + 1;
+  sheet.appendRow([id, date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'), type, diamonds || 0, shells || 0, note || '', status || '已確認']);
+  return { ok: true, id: id };
+}
+
+function approveTreasureById(id) {
+  const sheet = getOrCreateSheet('百寶箱', TREASURE_COLS);
+  const data = sheet.getDataRange().getValues();
+  for (var r = 1; r < data.length; r++) {
+    if (Number(data[r][0]) === Number(id)) {
+      sheet.getRange(r + 1, 7).setValue('已確認');
+      return { ok: true };
+    }
+  }
+  return { error: 'Not found' };
+}
+
+function rejectTreasureById(id) {
+  const sheet = getOrCreateSheet('百寶箱', TREASURE_COLS);
+  const data = sheet.getDataRange().getValues();
+  for (var r = 1; r < data.length; r++) {
+    if (Number(data[r][0]) === Number(id)) {
+      sheet.deleteRow(r + 1);
+      return { ok: true };
+    }
+  }
+  return { error: 'Not found' };
 }

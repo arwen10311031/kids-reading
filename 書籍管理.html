@@ -149,7 +149,7 @@
         }
 
         .nav-btn-icon {
-            font-size: 24px;
+            font-size: 22px;
         }
 
         /* ===== LIBRARY TAB ===== */
@@ -1330,7 +1330,67 @@
                 </div>
             </div>
 
-            <!-- TAB 5: SETTINGS -->
+            <!-- TAB 5: TREASURE BOX -->
+            <div id="treasureTab" class="tab-content">
+                <!-- Balance -->
+                <div style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius:var(--radius-lg); padding:20px; margin-bottom:16px; color:white; text-align:center; box-shadow:0 4px 15px rgba(102,126,234,0.4);">
+                    <div style="font-size:18px; font-weight:700; margin-bottom:14px;">🎒 我的百寶箱</div>
+                    <div style="display:flex; justify-content:center; gap:32px;">
+                        <div>
+                            <div style="font-size:40px; font-weight:800; line-height:1.1;" id="treasureDiamonds">0</div>
+                            <div style="font-size:12px; opacity:0.8; margin-top:4px;">💎 鑽石</div>
+                        </div>
+                        <div>
+                            <div style="font-size:40px; font-weight:800; line-height:1.1;" id="treasureShells">0</div>
+                            <div style="font-size:12px; opacity:0.8; margin-top:4px;">🐚 貝殼</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kid: Request Withdrawal -->
+                <div style="background:linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius:var(--radius-lg); padding:14px; margin-bottom:12px; color:white; box-shadow:0 4px 15px rgba(245,87,108,0.3);">
+                    <div style="font-size:15px; font-weight:700; margin-bottom:10px;">💰 申請提領</div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                        <select id="withdrawCurrency" style="padding:8px; border:none; border-radius:8px; font-size:13px;">
+                            <option value="diamond">💎 鑽石</option>
+                            <option value="shell">🐚 貝殼</option>
+                        </select>
+                        <input type="number" id="withdrawAmount" min="1" value="1" style="width:60px; padding:8px; border:none; border-radius:8px; text-align:center; font-size:14px; font-weight:700;">
+                        <input type="text" id="withdrawNote" placeholder="用途（例如：買玩具）" style="flex:1; min-width:120px; padding:8px 10px; border:none; border-radius:8px; font-size:13px;">
+                        <button onclick="requestWithdraw()" style="padding:8px 14px; border:none; border-radius:8px; background:white; color:#f5576c; font-weight:700; font-size:13px; cursor:pointer;">提交申請</button>
+                    </div>
+                </div>
+
+                <!-- Parent: Deposit -->
+                <div class="parent-only" style="background:linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius:var(--radius-lg); padding:14px; margin-bottom:12px; color:white; box-shadow:0 4px 15px rgba(17,153,142,0.3);">
+                    <div style="font-size:15px; font-weight:700; margin-bottom:10px;">📥 存入百寶箱</div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                        <select id="depositCurrency" style="padding:8px; border:none; border-radius:8px; font-size:13px;">
+                            <option value="diamond">💎 鑽石</option>
+                            <option value="shell">🐚 貝殼</option>
+                        </select>
+                        <input type="number" id="depositAmount" min="1" value="1" style="width:60px; padding:8px; border:none; border-radius:8px; text-align:center; font-size:14px; font-weight:700;">
+                        <input type="text" id="depositNote" placeholder="備註（例如：4月獎勵結算）" style="flex:1; min-width:120px; padding:8px 10px; border:none; border-radius:8px; font-size:13px;">
+                        <button onclick="depositTreasure()" style="padding:8px 14px; border:none; border-radius:8px; background:white; color:#11998e; font-weight:700; font-size:13px; cursor:pointer;">存入</button>
+                    </div>
+                </div>
+
+                <!-- Parent: Pending Approvals -->
+                <div class="parent-only" id="treasurePendingSection" style="display:none;">
+                    <div style="background:linear-gradient(135deg, #FFD700 0%, #FFA500 100%); border-radius:var(--radius-lg); padding:14px; margin-bottom:12px; color:white; box-shadow:0 4px 15px rgba(255,165,0,0.3);">
+                        <div style="font-size:15px; font-weight:700; margin-bottom:10px;">⏳ 待核准提領</div>
+                        <div id="treasurePendingList"></div>
+                    </div>
+                </div>
+
+                <!-- Transaction History -->
+                <div style="background:linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius:var(--radius-lg); padding:14px; margin-bottom:12px; color:white; box-shadow:0 4px 15px rgba(79,172,254,0.3);">
+                    <div style="font-size:15px; font-weight:700; margin-bottom:10px;">📜 交易紀錄</div>
+                    <div id="treasureHistory" style="max-height:400px; overflow-y:auto;"></div>
+                </div>
+            </div>
+
+            <!-- TAB 6: SETTINGS -->
             <div id="settingsTab" class="tab-content">
                 <div class="setting-group">
                     <div class="setting-title">📤 匯出資料</div>
@@ -1348,12 +1408,6 @@
                 </div>
 
                 <div class="setting-group">
-                    <div class="setting-title">⚙️ 獎勵任務管理</div>
-                    <div id="taskSettingsContainer"></div>
-                    <button class="btn-secondary" onclick="showAddTaskModal()" style="margin-top: 8px;">➕ 新增任務</button>
-                </div>
-
-                <div class="setting-group">
                     <div class="setting-title">🎯 本月獎勵權重設定</div>
                     <div style="font-size:12px; color:var(--color-text-light); margin-bottom:8px;">
                         每月可調整各任務的獎勵數，想加強哪個項目就調高（10🐚 = 1💎）
@@ -1364,7 +1418,7 @@
                     </div>
                     <div id="monthWeightsContainer"></div>
                     <button class="btn-secondary" style="margin-top:8px; font-size:13px;" onclick="addMonthWeightTask()">➕ 新增本月任務</button>
-                    <button class="btn-primary" style="margin-top:10px; font-size:14px;" onclick="saveMonthWeights()">💾 儲存本月權重</button>
+                    <button id="syncWeightsBtn" class="btn-primary" style="margin-top:10px; font-size:14px; width:100%;" onclick="saveMonthWeights()">💾 儲存並同步到試算表</button>
                 </div>
 
                 <div class="setting-group">
@@ -1379,6 +1433,7 @@
 
                 <div class="setting-group">
                     <div class="setting-title">⚠️ 危險操作</div>
+                    <button class="btn-danger" onclick="clearRewardsData()" style="margin-bottom:8px;">🔄 清除獎勵積分（重新累計）</button>
                     <button class="btn-danger" onclick="clearAllData()">🗑️ 清除所有資料</button>
                 </div>
             </div>
@@ -1401,6 +1456,10 @@
             <div class="nav-btn" data-tab="rewards" onclick="switchTab('rewards')">
                 <div class="nav-btn-icon">⭐</div>
                 <div>獎勵</div>
+            </div>
+            <div class="nav-btn" data-tab="treasure" onclick="switchTab('treasure')">
+                <div class="nav-btn-icon">🎒</div>
+                <div>百寶箱</div>
             </div>
             <div class="nav-btn parent-only" data-tab="settings" onclick="switchTab('settings')">
                 <div class="nav-btn-icon">⚙️</div>
@@ -1584,12 +1643,16 @@
 
         async function apiPost(data) {
             try {
-                await fetch(API_URL, {
+                const resp = await fetch(API_URL, {
                     method: 'POST',
                     body: JSON.stringify(data)
                 });
+                const result = await resp.json();
+                if (result.error) console.error('API error:', data.action, result.error);
+                return result;
             } catch(err) {
-                console.error('API error:', err);
+                console.error('API error:', data.action, err);
+                return { error: err.message };
             }
         }
 
@@ -1651,6 +1714,7 @@
             renderLibrary();
             renderStatistics();
             renderRewards();
+            renderTreasure();
         }
 
         function enterApp(mode) {
@@ -1720,6 +1784,7 @@
             renderRewards();
             renderStatistics();
             renderSettings();
+            renderTreasure();
             setupEventListeners();
             document.getElementById('purchaseDateInput').value = new Date().toISOString().split('T')[0];
             showLoading(false);
@@ -1735,6 +1800,7 @@
             renderRewards();
             renderStatistics();
             renderSettings();
+            renderTreasure();
             btn.style.animation = '';
             showToast('✅ 資料已更新');
         }
@@ -1834,12 +1900,16 @@
                 // Settings
                 parentPin = String((data.settings || {}).parentPin || '');
 
+                // Treasure box
+                treasureData = data.treasure || [];
+
             } catch(err) {
                 console.error('API load error:', err);
                 showToast('⚠️ 載入失敗: ' + err.message);
                 books = [];
                 rewards = {};
                 rewardTasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+                treasureData = [];
             }
         }
 
@@ -2455,10 +2525,9 @@
                     total: 0,
                     note: ''
                 };
-                // Create month rows in Google Sheets
-                apiPost({ action: 'ensureMonth', month: monthKey, tasks: rewardTasks });
+                // 只初始化本地記憶體，不寫入試算表
+                // 試算表由 updateRewardCell（打卡時）或 syncMonthTasks（設定頁儲存）按需建立
             }
-            // Ensure all tasks have pending field
             rewards[monthKey].tasks.forEach(t => {
                 if (!t.pending) t.pending = {};
             });
@@ -3096,24 +3165,158 @@
             document.getElementById('funStats').innerHTML = stats;
         }
 
+        // ===== TREASURE BOX (百寶箱) =====
+        let treasureData = [];
+
+        function renderTreasure() {
+            // Calculate balance from confirmed transactions
+            let totalDiamonds = 0, totalShells = 0;
+            const confirmed = treasureData.filter(t => t.status === '已確認');
+            confirmed.forEach(t => {
+                totalDiamonds += t.diamonds;
+                totalShells += t.shells;
+            });
+
+            document.getElementById('treasureDiamonds').textContent = totalDiamonds;
+            document.getElementById('treasureShells').textContent = totalShells;
+
+            // Pending approvals (parent only)
+            const pending = treasureData.filter(t => t.status === '待核准');
+            const pendingSection = document.getElementById('treasurePendingSection');
+            const pendingList = document.getElementById('treasurePendingList');
+            if (pending.length > 0) {
+                pendingSection.style.display = '';
+                pendingList.innerHTML = pending.map(t => {
+                    const what = t.diamonds !== 0 ? `${Math.abs(t.diamonds)} 💎` : `${Math.abs(t.shells)} 🐚`;
+                    return `
+                    <div style="background:rgba(255,255,255,0.2); border-radius:10px; padding:10px 12px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-size:14px; font-weight:700;">提領 ${what}</div>
+                            <div style="font-size:12px; opacity:0.9;">${t.note ? escapeHtml(t.note) : '無備註'} · ${t.date}</div>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <button onclick="approveTreasure(${t.id})" style="padding:6px 12px; border:none; border-radius:8px; background:#27AE60; color:white; font-weight:700; font-size:12px; cursor:pointer;">✓ 核准</button>
+                            <button onclick="rejectTreasure(${t.id})" style="padding:6px 12px; border:none; border-radius:8px; background:#E74C3C; color:white; font-weight:700; font-size:12px; cursor:pointer;">✕ 駁回</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            } else {
+                pendingSection.style.display = 'none';
+            }
+
+            // Transaction history
+            const historyEl = document.getElementById('treasureHistory');
+            const sorted = [...treasureData].sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id);
+            if (sorted.length === 0) {
+                historyEl.innerHTML = '<div style="text-align:center; opacity:0.8; padding:12px;">還沒有任何交易紀錄</div>';
+            } else {
+                historyEl.innerHTML = sorted.map(t => {
+                    const isDeposit = t.type === '存入';
+                    const isPending = t.status === '待核准';
+                    const icon = isDeposit ? '📥' : '💰';
+                    const amtParts = [];
+                    if (t.diamonds !== 0) amtParts.push(`${t.diamonds > 0 ? '+' : ''}${t.diamonds} 💎`);
+                    if (t.shells !== 0) amtParts.push(`${t.shells > 0 ? '+' : ''}${t.shells} 🐚`);
+                    const amtStr = amtParts.join(' ');
+                    return `
+                    <div style="background:rgba(255,255,255,0.15); border-radius:8px; padding:8px 10px; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                        <div>
+                            <span>${icon} ${escapeHtml(t.note || t.type)}</span>
+                            ${isPending ? '<span style="background:rgba(255,255,255,0.3); border-radius:4px; padding:1px 6px; font-size:11px; margin-left:4px;">待核准</span>' : ''}
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-weight:700; ${isDeposit ? 'color:#90EE90;' : 'color:#FFB6C1;'}">${amtStr}</div>
+                            <div style="font-size:11px; opacity:0.7;">${t.date}</div>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        function depositTreasure() {
+            if (parentOnly()) return;
+            const currency = document.getElementById('depositCurrency').value;
+            const amount = parseInt(document.getElementById('depositAmount').value) || 0;
+            const note = document.getElementById('depositNote').value || '存入';
+            if (amount < 1) { showToast('❌ 請輸入有效數量'); return; }
+
+            const diamonds = currency === 'diamond' ? amount : 0;
+            const shells = currency === 'shell' ? amount : 0;
+            const today = new Date().toISOString().split('T')[0];
+
+            const newEntry = {
+                id: Date.now(),
+                date: today,
+                type: '存入',
+                diamonds: diamonds,
+                shells: shells,
+                note: note,
+                status: '已確認'
+            };
+            treasureData.push(newEntry);
+            renderTreasure();
+
+            apiPost({ action: 'addTreasure', date: today, type: '存入', diamonds, shells, note, status: '已確認' });
+            document.getElementById('depositAmount').value = '1';
+            document.getElementById('depositNote').value = '';
+            showToast(`✅ 已存入 ${amount} ${currency === 'diamond' ? '💎' : '🐚'}`);
+        }
+
+        function requestWithdraw() {
+            const currency = document.getElementById('withdrawCurrency').value;
+            const amount = parseInt(document.getElementById('withdrawAmount').value) || 0;
+            const note = document.getElementById('withdrawNote').value || '提領';
+            if (amount < 1) { showToast('❌ 請輸入有效數量'); return; }
+
+            // Check balance
+            let totalD = 0, totalS = 0;
+            treasureData.filter(t => t.status === '已確認').forEach(t => { totalD += t.diamonds; totalS += t.shells; });
+            if (currency === 'diamond' && amount > totalD) { showToast('❌ 鑽石不足！'); return; }
+            if (currency === 'shell' && amount > totalS) { showToast('❌ 貝殼不足！'); return; }
+
+            const diamonds = currency === 'diamond' ? -amount : 0;
+            const shells = currency === 'shell' ? -amount : 0;
+            const today = new Date().toISOString().split('T')[0];
+
+            const newEntry = {
+                id: Date.now(),
+                date: today,
+                type: '提領',
+                diamonds: diamonds,
+                shells: shells,
+                note: note,
+                status: '待核准'
+            };
+            treasureData.push(newEntry);
+            renderTreasure();
+
+            apiPost({ action: 'addTreasure', date: today, type: '提領', diamonds, shells, note, status: '待核准' });
+            document.getElementById('withdrawAmount').value = '1';
+            document.getElementById('withdrawNote').value = '';
+            showToast('📨 提領申請已送出，等待家長核准');
+        }
+
+        function approveTreasure(id) {
+            if (parentOnly()) return;
+            const entry = treasureData.find(t => t.id === id);
+            if (entry) {
+                entry.status = '已確認';
+                renderTreasure();
+                apiPost({ action: 'approveTreasure', id: id });
+                showToast('✅ 提領已核准');
+            }
+        }
+
+        function rejectTreasure(id) {
+            if (parentOnly()) return;
+            treasureData = treasureData.filter(t => t.id !== id);
+            renderTreasure();
+            apiPost({ action: 'rejectTreasure', id: id });
+            showToast('❌ 提領已駁回');
+        }
+
         // ===== SETTINGS TAB =====
         function renderSettings() {
-            // Render reward task management
-            const container = document.getElementById('taskSettingsContainer');
-            container.innerHTML = rewardTasks.map((task, idx) => {
-                const isDiamond = task.points >= 10 && task.points % 10 === 0;
-                const displayVal = isDiamond ? task.points / 10 : task.points;
-                const currencyIcon = isDiamond ? '💎' : '🐚';
-                return `
-                <div style="background: var(--color-border); padding: 8px; border-radius: var(--radius); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-                    <div style="font-size: 13px;">
-                        <div style="font-weight: 600;">${escapeHtml(task.name)}</div>
-                        <div style="font-size: 11px; color: var(--color-text-light);">預設 ${displayVal} ${currencyIcon}</div>
-                    </div>
-                    <button class="counter-btn" onclick="deleteTask(${idx})" style="width: 24px; height: 24px;">✕</button>
-                </div>`;
-            }).join('');
-
             // Render monthly weight selector
             renderMonthWeightSelector();
             loadMonthWeights();
@@ -3204,59 +3407,84 @@
             }
         }
 
-        function saveMonthWeights() {
+        async function saveMonthWeights() {
             if (parentOnly()) return;
-            const monthKey = document.getElementById('monthWeightSelector').value;
-            const container = document.getElementById('monthWeightsContainer');
-            const nameInputs = container.querySelectorAll('input[id^="monthWeightName_"]');
-            const weights = [];
+            const btn = document.getElementById('syncWeightsBtn');
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ 同步中...';
+            btn.disabled = true;
 
-            nameInputs.forEach((nameInput, idx) => {
-                const pointsInput = document.getElementById(`monthWeight_${idx}`);
-                const currencySelect = document.getElementById(`monthWeightCurrency_${idx}`);
-                let points = parseInt(pointsInput ? pointsInput.value : 0) || 0;
-                const currency = currencySelect ? currencySelect.value : 'shell';
-                if (currency === 'diamond') points = points * 10;
-                weights.push({
-                    name: nameInput.value || '未命名',
-                    points: points
-                });
-            });
+            try {
+                const monthKey = document.getElementById('monthWeightSelector').value;
+                const container = document.getElementById('monthWeightsContainer');
+                const nameInputs = container.querySelectorAll('input[id^="monthWeightName_"]');
+                const weights = [];
 
-            // Ensure month exists in rewards
-            if (!rewards[monthKey]) {
-                rewards[monthKey] = {
-                    tasks: weights.map(w => ({ name: w.name, points: w.points, daily: {} })),
-                    total: 0,
-                    note: ''
-                };
-            } else {
-                // Rebuild tasks: preserve daily data where task name matches
-                const oldTasks = rewards[monthKey].tasks || [];
-                const newTasks = weights.map(w => {
-                    const existing = oldTasks.find(t => t.name === w.name);
-                    return { name: w.name, points: w.points, daily: existing ? existing.daily : {} };
+                nameInputs.forEach((nameInput, idx) => {
+                    const pointsInput = document.getElementById(`monthWeight_${idx}`);
+                    const currencySelect = document.getElementById(`monthWeightCurrency_${idx}`);
+                    let points = parseInt(pointsInput ? pointsInput.value : 0) || 0;
+                    const currency = currencySelect ? currencySelect.value : 'shell';
+                    if (currency === 'diamond') points = points * 10;
+                    weights.push({
+                        name: nameInput.value || '未命名',
+                        points: points
+                    });
                 });
-                rewards[monthKey].tasks = newTasks;
+
+                const existingRewardTasks = (rewards[monthKey] && rewards[monthKey].tasks) ? rewards[monthKey].tasks : [];
+
+                if (!rewards[monthKey]) {
+                    rewards[monthKey] = {
+                        tasks: weights.map(w => ({ name: w.name, points: w.points, daily: {} })),
+                        total: 0,
+                        note: ''
+                    };
+                } else {
+                    const newTasks = weights.map(w => {
+                        const existing = existingRewardTasks.find(t => t.name === w.name);
+                        return { name: w.name, points: w.points, daily: existing ? existing.daily : {} };
+                    });
+                    rewards[monthKey].tasks = newTasks;
+                }
+
+                // Recalculate month total
+                let total = 0;
+                rewards[monthKey].tasks.forEach(task => {
+                    Object.values(task.daily).forEach(count => {
+                        total += count * task.points;
+                    });
+                });
+                rewards[monthKey].total = total;
+
+                // Update local rewardTasks immediately
+                rewardTasks = rewards[monthKey].tasks.map(t => ({ name: t.name, points: t.points }));
+
+                // Single API call: sync spreadsheet (delete extra + add missing + update points)
+                const result = await apiPost({
+                    action: 'syncMonthTasks',
+                    month: monthKey,
+                    tasks: rewards[monthKey].tasks.map(t => ({ name: t.name, points: t.points }))
+                });
+
+                if (result && result.error) {
+                    btn.textContent = '❌ 同步失敗';
+                    showToast('❌ 同步失敗: ' + result.error);
+                } else {
+                    btn.textContent = '✅ 已同步';
+                    showToast('✅ 試算表已同步！');
+                }
+
+                renderRewards();
+            } catch (err) {
+                btn.textContent = '❌ 同步失敗';
+                showToast('❌ 同步失敗: ' + err.message);
             }
 
-            // Recalculate month total
-            let total = 0;
-            rewards[monthKey].tasks.forEach(task => {
-                Object.values(task.daily).forEach(count => {
-                    total += count * task.points;
-                });
-            });
-            rewards[monthKey].total = total;
-
-            // Sync to Google Sheets
-            apiPost({ action: 'ensureMonth', month: monthKey, tasks: rewards[monthKey].tasks.map(t => ({ name: t.name, points: t.points })) });
-            rewards[monthKey].tasks.forEach(t => {
-                apiPost({ action: 'updateTaskDef', month: monthKey, oldName: t.name, newName: t.name, points: t.points });
-            });
-
-            renderRewards();
-            showToast('✅ 本月權重已儲存！');
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }, 2000);
         }
 
         function copyWeightsFromPrevMonth() {
@@ -3411,6 +3639,21 @@
             };
             reader.readAsText(file);
             event.target.value = '';
+        }
+
+        function clearRewardsData() {
+            if (parentOnly()) return;
+            if (!confirm('確定要清除所有獎勵積分嗎？書單不受影響。')) return;
+
+            rewards = {};
+            rewardTasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+
+            apiPost({ action: 'clearRewards' });
+
+            renderRewards();
+            renderSettings();
+
+            showToast('✅ 獎勵積分已清除，可以重新累計了');
         }
 
         function clearAllData() {
