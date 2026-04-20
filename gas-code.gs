@@ -36,6 +36,14 @@ function fmtDate(val) {
   return val ? String(val) : '';
 }
 
+// Normalize month cell value: Date → "yyyy-MM", String → trimmed
+function normMonth(val) {
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM');
+  }
+  return val ? String(val).trim() : '';
+}
+
 // ===== HTTP Handlers =====
 
 function doGet(e) {
@@ -92,7 +100,13 @@ function readBooks() {
       const key = BOOK_MAP[col] || col;
       let val = row[i];
       if (col === '購買日' || col === '售出日') val = fmtDate(val);
-      if (col === '閱讀日') val = val ? String(val) : '';
+      if (col === '閱讀日') {
+        if (val instanceof Date) {
+          val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+        } else {
+          val = val ? String(val) : '';
+        }
+      }
       book[key] = val;
     });
     book.id = Number(book.id) || 0;
@@ -112,7 +126,7 @@ function readRewardSheet(sheetName) {
 
   const result = {};
   for (let r = 1; r < data.length; r++) {
-    const month = String(data[r][0]).trim();
+    const month = normMonth(data[r][0]);
     const taskName = String(data[r][1]).trim();
     const points = Number(data[r][2]) || 0;
     if (!month || !taskName) continue;
@@ -198,7 +212,7 @@ function updateRewardCell(month, taskName, points, day, count, sheetName) {
   const data = sheet.getDataRange().getValues();
 
   for (let r = 1; r < data.length; r++) {
-    if (String(data[r][0]).trim() === month && String(data[r][1]).trim() === taskName) {
+    if (normMonth(data[r][0]) === month && String(data[r][1]).trim() === taskName) {
       sheet.getRange(r + 1, Number(day) + 3).setValue(count > 0 ? count : '');
       return { ok: true };
     }
@@ -219,7 +233,7 @@ function doApproveTask(month, taskName, day) {
 
   let pendingCount = 0, pendingRow = -1, points = 0;
   for (let r = 1; r < pData.length; r++) {
-    if (String(pData[r][0]).trim() === month && String(pData[r][1]).trim() === taskName) {
+    if (normMonth(pData[r][0]) === month && String(pData[r][1]).trim() === taskName) {
       pendingRow = r;
       points = Number(pData[r][2]);
       pendingCount = Number(pData[r][Number(day) + 2]) || 0;
@@ -232,7 +246,7 @@ function doApproveTask(month, taskName, day) {
   const cSheet = getOrCreateSheet('獎勵', rewardHeaders());
   const cData = cSheet.getDataRange().getValues();
   for (let r = 1; r < cData.length; r++) {
-    if (String(cData[r][0]).trim() === month && String(cData[r][1]).trim() === taskName) {
+    if (normMonth(cData[r][0]) === month && String(cData[r][1]).trim() === taskName) {
       const cur = Number(cData[r][Number(day) + 2]) || 0;
       cSheet.getRange(r + 1, Number(day) + 3).setValue(cur + pendingCount);
       break;
@@ -248,7 +262,7 @@ function doRejectTask(month, taskName, day) {
   const sheet = getOrCreateSheet('待確認', rewardHeaders());
   const data = sheet.getDataRange().getValues();
   for (let r = 1; r < data.length; r++) {
-    if (String(data[r][0]).trim() === month && String(data[r][1]).trim() === taskName) {
+    if (normMonth(data[r][0]) === month && String(data[r][1]).trim() === taskName) {
       sheet.getRange(r + 1, Number(day) + 3).setValue('');
       return { ok: true };
     }
@@ -263,7 +277,7 @@ function ensureMonth(month, tasks) {
 
     const existing = {};
     for (let r = 1; r < data.length; r++) {
-      if (String(data[r][0]).trim() === month) {
+      if (normMonth(data[r][0]) === month) {
         existing[String(data[r][1]).trim()] = true;
       }
     }
@@ -286,7 +300,7 @@ function updateTaskDef(month, oldName, newName, newPoints) {
     const sheet = getOrCreateSheet(sheetName, rewardHeaders());
     const data = sheet.getDataRange().getValues();
     for (let r = 1; r < data.length; r++) {
-      if (String(data[r][0]).trim() === month && String(data[r][1]).trim() === oldName) {
+      if (normMonth(data[r][0]) === month && String(data[r][1]).trim() === oldName) {
         sheet.getRange(r + 1, 2).setValue(newName);
         sheet.getRange(r + 1, 3).setValue(newPoints);
         break;
@@ -301,7 +315,7 @@ function deleteTaskDef(month, taskName) {
     const sheet = getOrCreateSheet(sheetName, rewardHeaders());
     const data = sheet.getDataRange().getValues();
     for (let r = data.length - 1; r >= 1; r--) {
-      if (String(data[r][0]).trim() === month && String(data[r][1]).trim() === taskName) {
+      if (normMonth(data[r][0]) === month && String(data[r][1]).trim() === taskName) {
         sheet.deleteRow(r + 1);
       }
     }
