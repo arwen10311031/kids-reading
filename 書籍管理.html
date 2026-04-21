@@ -1034,6 +1034,140 @@
                 font-size: 24px;
             }
         }
+
+        /* ===== RWD: Tablet (768px+) ===== */
+        @media (min-width: 768px) {
+            .container {
+                max-width: 720px;
+                border-left: 1px solid var(--color-border);
+                border-right: 1px solid var(--color-border);
+            }
+
+            .nav-bar {
+                max-width: 720px;
+            }
+
+            .header h1 {
+                font-size: 28px;
+            }
+
+            .header p {
+                font-size: 14px;
+            }
+
+            .tab-content {
+                padding: 24px;
+            }
+
+            .book-card {
+                padding: 16px;
+            }
+
+            .book-title {
+                font-size: 18px;
+            }
+
+            .nav-btn {
+                font-size: 12px;
+            }
+
+            .nav-btn-icon {
+                font-size: 26px;
+            }
+
+            .nav-bar {
+                height: 76px;
+            }
+
+            .content {
+                padding-bottom: 90px;
+            }
+
+            .calendar-day {
+                width: 38px;
+                height: 38px;
+                font-size: 13px;
+            }
+
+            .task-row {
+                padding: 12px 14px;
+            }
+
+            .modal {
+                max-width: 600px;
+            }
+
+            #modeSwitchBtn {
+                max-width: 720px !important;
+            }
+        }
+
+        /* ===== RWD: Desktop (1024px+) ===== */
+        @media (min-width: 1024px) {
+            .container {
+                max-width: 960px;
+                box-shadow: 0 0 40px rgba(0,0,0,0.08);
+            }
+
+            .nav-bar {
+                max-width: 960px;
+            }
+
+            .header h1 {
+                font-size: 30px;
+            }
+
+            .tab-content {
+                padding: 32px 48px;
+            }
+
+            .book-card {
+                padding: 18px;
+            }
+
+            .book-title {
+                font-size: 19px;
+            }
+
+            .calendar-day {
+                width: 42px;
+                height: 42px;
+                font-size: 14px;
+            }
+
+            .modal {
+                max-width: 680px;
+            }
+
+            #modeSwitchBtn {
+                max-width: 960px !important;
+            }
+        }
+
+        /* ===== RWD: Wide Desktop (1440px+) ===== */
+        @media (min-width: 1440px) {
+            .container {
+                max-width: 1080px;
+            }
+
+            .nav-bar {
+                max-width: 1080px;
+            }
+
+            .tab-content {
+                padding: 40px 64px;
+            }
+
+            .calendar-day {
+                width: 48px;
+                height: 48px;
+                font-size: 15px;
+            }
+
+            #modeSwitchBtn {
+                max-width: 1080px !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1194,17 +1328,17 @@
             <div id="statisticsTab" class="tab-content">
                 <div class="stat-card">
                     <div class="stat-title">購買總金額</div>
-                    <div class="stat-value" id="totalPurchaseValue">NT$0</div>
+                    <div class="stat-value" id="totalPurchaseValue">NT 0</div>
                 </div>
 
                 <div class="stat-card secondary">
                     <div class="stat-title">已售出金額</div>
-                    <div class="stat-value" id="totalSoldValue">NT$0</div>
+                    <div class="stat-value" id="totalSoldValue">NT 0</div>
                 </div>
 
                 <div class="stat-card success">
                     <div class="stat-title">淨成本</div>
-                    <div class="stat-value" id="netCostValue">NT$0</div>
+                    <div class="stat-value" id="netCostValue">NT 0</div>
                 </div>
 
                 <div class="stat-card">
@@ -1251,7 +1385,13 @@
                 </div>
 
                 <div style="margin-bottom: 4px;">
-                    <div class="reward-section-title" style="margin-top: 0; margin-bottom: 0; border-bottom: none; padding-bottom: 0;">🎯 今日打卡</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div class="reward-section-title" style="margin-top: 0; margin-bottom: 0; border-bottom: none; padding-bottom: 0;" id="checkInTitle">🎯 今日打卡</div>
+                        <div class="parent-only" style="display:flex; align-items:center; gap:4px;">
+                            <input type="date" id="checkInDatePicker" style="padding:4px 8px; border:2px solid var(--color-border); border-radius:8px; font-size:12px;" onchange="onCheckInDateChange()">
+                            <button onclick="resetCheckInDate()" style="padding:4px 8px; border:none; border-radius:8px; background:var(--color-border); font-size:11px; cursor:pointer;">今天</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="todayTasksContainer">
@@ -1423,9 +1563,10 @@
 
                 <div class="setting-group">
                     <div class="setting-title">🔐 家長密碼</div>
-                    <div style="font-size:12px; color:var(--color-text-light); margin-bottom:8px;">設定4位數密碼保護家長模式</div>
+                    <div style="font-size:12px; color:var(--color-text-light); margin-bottom:8px;">輸入新的4位數字即可變更密碼</div>
+                    <div id="currentPinHint" style="font-size:12px; color:var(--color-primary); margin-bottom:6px;"></div>
                     <div style="display:flex; gap:8px; align-items:center;">
-                        <input type="password" id="pinInput" maxlength="4" pattern="[0-9]*" inputmode="numeric"
+                        <input type="password" id="pinInput" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="新密碼"
                             style="width:100px; padding:8px; border:2px solid var(--color-border); border-radius:8px; text-align:center; font-size:18px; letter-spacing:8px;">
                         <button class="btn-secondary" onclick="savePin()" style="padding:8px 16px;">儲存</button>
                     </div>
@@ -1513,7 +1654,10 @@
                         <label class="form-label">閱讀日期紀錄</label>
                         <div id="editReadDatesDisplay" style="font-size:13px; color:var(--color-text-light); margin-bottom:6px;"></div>
                         <input type="hidden" id="editReadDate">
-                        <button type="button" class="btn-secondary" style="font-size:13px; padding:6px 12px;" onclick="addReadingDate()">📅 新增閱讀日（今天）</button>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <input type="date" id="readingDatePicker" class="form-input" style="flex:1; font-size:13px; padding:6px 8px;">
+                            <button type="button" class="btn-secondary" style="font-size:13px; padding:6px 12px; white-space:nowrap;" onclick="addReadingDate()">📅 新增閱讀日</button>
+                        </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
@@ -1534,6 +1678,20 @@
             <div class="modal-footer">
                 <button onclick="closeModal('editModal')" style="background-color: var(--color-border); color: var(--color-text);">取消</button>
                 <button onclick="saveEditedBook()" style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%); color: white;">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Day Detail Modal -->
+    <div id="dayDetailModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="dayDetailTitle">📆 當日明細</div>
+                <button class="modal-close" onclick="closeModal('dayDetailModal')">✕</button>
+            </div>
+            <div class="modal-body" id="dayDetailBody"></div>
+            <div class="modal-footer">
+                <button onclick="closeModal('dayDetailModal')" style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%); color: white;">關閉</button>
             </div>
         </div>
     </div>
@@ -2091,7 +2249,7 @@
                     <div class="book-details">
                         <div class="detail-row">
                             <span class="detail-label">買入價:</span>
-                            <span class="detail-value">${userMode === 'kid' ? '*****' : 'NT$' + fmtMoney(book.price)}</span>
+                            <span class="detail-value">${userMode === 'kid' ? '*****' : 'NT ' + fmtMoney(book.price)}</span>
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">購買日:</span>
@@ -2112,7 +2270,7 @@
                         ${book.soldPrice ? `
                             <div class="detail-row">
                                 <span class="detail-label">售出價:</span>
-                                <span class="detail-value">${userMode === 'kid' ? '*****' : 'NT$' + fmtMoney(Math.abs(book.soldPrice))}</span>
+                                <span class="detail-value">${userMode === 'kid' ? '*****' : 'NT ' + fmtMoney(Math.abs(book.soldPrice))}</span>
                             </div>
                             <div class="detail-row">
                                 <span class="detail-label">售出日:</span>
@@ -2147,6 +2305,10 @@
             document.getElementById('editSoldPrice').value = book.soldPrice ? Math.abs(book.soldPrice) : '';
             document.getElementById('editSoldDate').value = book.soldDate || '';
             document.getElementById('editNote').value = book.note || '';
+
+            // Initialize reading date picker to today
+            const today = new Date();
+            document.getElementById('readingDatePicker').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
 
             openModal('editModal');
         }
@@ -2194,10 +2356,14 @@
 
         function addReadingDate() {
             const hiddenInput = document.getElementById('editReadDate');
-            const today = new Date();
-            const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+            const picker = document.getElementById('readingDatePicker');
+            const dateStr = picker.value;
+            if (!dateStr) {
+                showToast('請先選擇日期');
+                return;
+            }
             const current = hiddenInput.value;
-            hiddenInput.value = current ? current + ',' + todayStr : todayStr;
+            hiddenInput.value = current ? current + ',' + dateStr : dateStr;
             updateReadDatesDisplay(hiddenInput.value);
             // Auto-increment readCount
             const countInput = document.getElementById('editReadCount');
@@ -2390,9 +2556,9 @@
             }, 0);
             const netCost = totalPurchase - totalSold;
 
-            document.getElementById('totalPurchaseValue').textContent = userMode === 'kid' ? '*****' : `NT$${fmtMoney(totalPurchase)}`;
-            document.getElementById('totalSoldValue').textContent = userMode === 'kid' ? '*****' : `NT$${fmtMoney(totalSold)}`;
-            document.getElementById('netCostValue').textContent = userMode === 'kid' ? '*****' : `NT$${fmtMoney(netCost)}`;
+            document.getElementById('totalPurchaseValue').textContent = userMode === 'kid' ? '*****' : `NT ${fmtMoney(totalPurchase)}`;
+            document.getElementById('totalSoldValue').textContent = userMode === 'kid' ? '*****' : `NT ${fmtMoney(totalSold)}`;
+            document.getElementById('netCostValue').textContent = userMode === 'kid' ? '*****' : `NT ${fmtMoney(netCost)}`;
 
             // Book statistics
             const totalBooks = books.length;
@@ -2484,6 +2650,54 @@
             return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         }
 
+        // ===== 日期選擇器 (家長模式可選任意日期) =====
+        let selectedCheckInDate = new Date();
+
+        function getSelectedDayNum() {
+            return selectedCheckInDate.getDate();
+        }
+
+        function getSelectedMonthKey() {
+            return `${selectedCheckInDate.getFullYear()}-${String(selectedCheckInDate.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        function onCheckInDateChange() {
+            const picker = document.getElementById('checkInDatePicker');
+            if (picker.value) {
+                const parts = picker.value.split('-');
+                selectedCheckInDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            }
+            updateCheckInTitle();
+            renderTodayTasks();
+        }
+
+        function resetCheckInDate() {
+            selectedCheckInDate = new Date();
+            const picker = document.getElementById('checkInDatePicker');
+            picker.value = formatDateForPicker(selectedCheckInDate);
+            updateCheckInTitle();
+            renderTodayTasks();
+        }
+
+        function formatDateForPicker(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+
+        function updateCheckInTitle() {
+            const today = new Date();
+            const isToday = selectedCheckInDate.getFullYear() === today.getFullYear() &&
+                            selectedCheckInDate.getMonth() === today.getMonth() &&
+                            selectedCheckInDate.getDate() === today.getDate();
+            const titleEl = document.getElementById('checkInTitle');
+            if (isToday) {
+                titleEl.textContent = '🎯 今日打卡';
+            } else {
+                const m = selectedCheckInDate.getMonth() + 1;
+                const d = selectedCheckInDate.getDate();
+                titleEl.textContent = `🎯 ${m}/${d} 打卡`;
+            }
+        }
+
         function getMonthKey() {
             const today = new Date();
             return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
@@ -2498,6 +2712,13 @@
             const today = new Date();
             const dateStr = today.toLocaleString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
             document.getElementById('todayDate').textContent = `${dateStr}`;
+
+            // Initialize date picker
+            const picker = document.getElementById('checkInDatePicker');
+            if (picker) {
+                picker.value = formatDateForPicker(selectedCheckInDate);
+            }
+            updateCheckInTitle();
 
             // Render today's tasks
             renderTodayTasks();
@@ -2607,16 +2828,16 @@
         }
 
         function renderTodayTasks() {
-            const monthKey = getMonthKey();
-            const today = new Date();
+            const monthKey = getSelectedMonthKey();
+            const dayNum = getSelectedDayNum();
             ensureMonthData(monthKey);
 
             const monthData = rewards[monthKey];
 
-            // Calculate today's confirmed total
+            // Calculate selected day's confirmed total
             let todayConfirmed = 0;
             monthData.tasks.forEach(task => {
-                const dayCount = parseInt(task.daily[today.getDate()] || 0);
+                const dayCount = parseInt(task.daily[dayNum] || 0);
                 todayConfirmed += dayCount * task.points;
             });
 
@@ -2632,14 +2853,13 @@
             document.getElementById('smartEncourageMsg').textContent = getSmartEncouragement(monthData);
 
             if (rewardMode === 'kid') {
-                renderKidMode(monthData, today);
+                renderKidMode(monthData, dayNum);
             } else {
-                renderParentMode(monthData, today);
+                renderParentMode(monthData, dayNum);
             }
         }
 
-        function renderKidMode(monthData, today) {
-            const dayNum = today.getDate();
+        function renderKidMode(monthData, dayNum) {
             let pendingTotal = 0;
             let confirmedTotal = 0;
 
@@ -2679,8 +2899,7 @@
             container.innerHTML = html;
         }
 
-        function renderParentMode(monthData, today) {
-            const dayNum = today.getDate();
+        function renderParentMode(monthData, dayNum) {
             let totalPendingItems = 0;
             let totalPendingPoints = 0;
 
@@ -2732,8 +2951,8 @@
         }
 
         function addPending(taskIdx) {
-            const monthKey = getMonthKey();
-            const dayNum = new Date().getDate();
+            const monthKey = getSelectedMonthKey();
+            const dayNum = getSelectedDayNum();
             ensureMonthData(monthKey);
 
             const task = rewards[monthKey].tasks[taskIdx];
@@ -2745,8 +2964,8 @@
         }
 
         function removePending(taskIdx) {
-            const monthKey = getMonthKey();
-            const dayNum = new Date().getDate();
+            const monthKey = getSelectedMonthKey();
+            const dayNum = getSelectedDayNum();
             ensureMonthData(monthKey);
 
             const task = rewards[monthKey].tasks[taskIdx];
@@ -2764,8 +2983,8 @@
 
         function approveTask(taskIdx) {
             if (parentOnly()) return;
-            const monthKey = getMonthKey();
-            const dayNum = new Date().getDate();
+            const monthKey = getSelectedMonthKey();
+            const dayNum = getSelectedDayNum();
             ensureMonthData(monthKey);
 
             const task = rewards[monthKey].tasks[taskIdx];
@@ -2786,8 +3005,8 @@
 
         function rejectTask(taskIdx) {
             if (parentOnly()) return;
-            const monthKey = getMonthKey();
-            const dayNum = new Date().getDate();
+            const monthKey = getSelectedMonthKey();
+            const dayNum = getSelectedDayNum();
             ensureMonthData(monthKey);
 
             const task = rewards[monthKey].tasks[taskIdx];
@@ -2799,8 +3018,8 @@
         }
 
         function approveAll() {
-            const monthKey = getMonthKey();
-            const dayNum = new Date().getDate();
+            const monthKey = getSelectedMonthKey();
+            const dayNum = getSelectedDayNum();
             ensureMonthData(monthKey);
 
             let totalApproved = 0;
@@ -2833,11 +3052,11 @@
             // Convert to shells (diamonds = x10 shells)
             const shellsToAdd = currency === 'diamond' ? amount * 10 : amount;
 
-            const monthKey = getMonthKey();
+            const monthKey = getSelectedMonthKey();
             ensureMonthData(monthKey);
 
-            // Add bonus as a special task entry for today
-            const dayNum = new Date().getDate();
+            // Add bonus as a special task entry for selected date
+            const dayNum = getSelectedDayNum();
             let bonusTask = rewards[monthKey].tasks.find(t => t.name === '🎁額外獎勵');
             if (!bonusTask) {
                 bonusTask = { name: '🎁額外獎勵', points: 1, daily: {}, pending: {} };
@@ -2873,8 +3092,8 @@
 
         function updateTaskCounter(taskIdx, delta) {
             if (parentOnly()) return;
-            const monthKey = getMonthKey();
-            const dayNum = new Date().getDate();
+            const monthKey = getSelectedMonthKey();
+            const dayNum = getSelectedDayNum();
             ensureMonthData(monthKey);
 
             const task = rewards[monthKey].tasks[taskIdx];
@@ -2988,6 +3207,20 @@
             });
 
             rewards[monthKey].tasks = newTasks;
+            // 同步更新全域 rewardTasks，確保其他月份/頁面也用新名稱
+            rewardTasks = newTasks.map(t => ({ name: t.name, points: t.points }));
+            // 同步更新所有其他月份中相同舊名的任務名稱
+            rows.forEach((row, idx) => {
+                const originalName = row.getAttribute('data-original-name') || '';
+                const nt = newTasks[idx];
+                if (originalName && originalName !== nt.name) {
+                    Object.keys(rewards).forEach(mk => {
+                        if (mk === monthKey) return;
+                        const mTask = rewards[mk].tasks.find(t => t.name === originalName);
+                        if (mTask) mTask.name = nt.name;
+                    });
+                }
+            });
             recalcMonthTotal(monthKey);
             closeModal('editTasksModal');
             renderTodayTasks();
@@ -3033,9 +3266,9 @@
                 const intensity = hasActivity ? (points / maxPoints) * 100 : 0;
 
                 if (hasActivity) {
-                    calendar += `<div class="calendar-day active" style="opacity: ${0.4 + (intensity / 100) * 0.6}; font-weight: ${isToday ? 700 : 500};">${day}</div>`;
+                    calendar += `<div class="calendar-day active" onclick="showDayDetail(${day})" style="opacity: ${0.4 + (intensity / 100) * 0.6}; font-weight: ${isToday ? 700 : 500};">${day}</div>`;
                 } else {
-                    calendar += `<div class="calendar-day">${day}</div>`;
+                    calendar += `<div class="calendar-day" onclick="showDayDetail(${day})">${day}</div>`;
                 }
             }
 
@@ -3043,6 +3276,55 @@
 
             // Update monthly total display
             document.getElementById('monthlyTotal').textContent = monthData.total;
+        }
+
+        function showDayDetail(day) {
+            const monthKey = getMonthKey();
+            ensureMonthData(monthKey);
+            const monthData = rewards[monthKey];
+            const now = new Date();
+
+            document.getElementById('dayDetailTitle').textContent = `📆 ${now.getFullYear()}/${now.getMonth()+1}/${day} 獎勵明細`;
+
+            let html = '';
+            let dayTotal = 0;
+            let hasData = false;
+
+            monthData.tasks.forEach(task => {
+                const confirmed = (task.daily && task.daily[day]) || 0;
+                const pending = (task.pending && task.pending[day]) || 0;
+                if (confirmed > 0 || pending > 0) {
+                    hasData = true;
+                    const taskPoints = confirmed * task.points;
+                    dayTotal += taskPoints;
+                    const isDiamond = task.points >= 10 && task.points % 10 === 0;
+                    const icon = isDiamond ? '💎' : '🐚';
+                    const displayPts = isDiamond ? task.points / 10 : task.points;
+                    html += `
+                    <div style="background:var(--color-bg); border-radius:10px; padding:10px 12px; margin-bottom:6px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-weight:600; font-size:14px;">${escapeHtml(task.name)}</div>
+                                <div style="font-size:11px; color:var(--color-text-light); margin-top:2px;">${displayPts} ${icon}/次</div>
+                            </div>
+                            <div style="font-size:15px; color:var(--color-primary); font-weight:700;">${taskPoints} 🐚</div>
+                        </div>
+                        <div style="display:flex; gap:12px; margin-top:4px; font-size:13px;">
+                            ${confirmed > 0 ? `<span style="color:#27AE60;">✅ 已確認 ${confirmed} 次</span>` : ''}
+                            ${pending > 0 ? `<span style="color:#E67E22;">⏳ 待確認 ${pending} 次</span>` : ''}
+                        </div>
+                    </div>`;
+                }
+            });
+
+            if (!hasData) {
+                html = '<div style="text-align:center; color:var(--color-text-light); padding:20px;">這天沒有打卡紀錄</div>';
+            } else {
+                html += `<div style="text-align:center; margin-top:8px; padding:10px; background:linear-gradient(135deg, var(--color-accent), #FFD93D); border-radius:10px; font-weight:700; font-size:15px;">當日合計: ${dayTotal} 🐚</div>`;
+            }
+
+            document.getElementById('dayDetailBody').innerHTML = html;
+            openModal('dayDetailModal');
         }
 
         function renderLevelBadge() {
@@ -3180,12 +3462,24 @@
             document.getElementById('treasureDiamonds').textContent = totalDiamonds;
             document.getElementById('treasureShells').textContent = totalShells;
 
-            // Pending approvals (parent only)
+            // Pending approvals — parent sees approve/reject, kid sees status only
             const pending = treasureData.filter(t => t.status === '待核准');
             const pendingSection = document.getElementById('treasurePendingSection');
             const pendingList = document.getElementById('treasurePendingList');
+
+            // Kid mode: show a separate read-only pending status section
+            let kidPendingEl = document.getElementById('treasureKidPending');
+            if (!kidPendingEl) {
+                kidPendingEl = document.createElement('div');
+                kidPendingEl.id = 'treasureKidPending';
+                pendingSection.parentElement.insertBefore(kidPendingEl, pendingSection);
+            }
+
             if (pending.length > 0) {
-                pendingSection.style.display = '';
+                // Parent: show approve/reject buttons
+                if (userMode === 'parent') {
+                    pendingSection.style.display = '';
+                }
                 pendingList.innerHTML = pending.map(t => {
                     const what = t.diamonds !== 0 ? `${Math.abs(t.diamonds)} 💎` : `${Math.abs(t.shells)} 🐚`;
                     return `
@@ -3200,8 +3494,27 @@
                         </div>
                     </div>`;
                 }).join('');
+
+                // Kid: show read-only pending status
+                if (userMode === 'kid') {
+                    kidPendingEl.style.display = '';
+                    kidPendingEl.innerHTML = `
+                    <div style="background:linear-gradient(135deg, #FFD700 0%, #FFA500 100%); border-radius:var(--radius-lg); padding:14px; margin-bottom:12px; color:white; box-shadow:0 4px 15px rgba(255,165,0,0.3);">
+                        <div style="font-size:15px; font-weight:700; margin-bottom:10px;">⏳ 提領申請中</div>
+                        ${pending.map(t => {
+                            const what = t.diamonds !== 0 ? `${Math.abs(t.diamonds)} 💎` : `${Math.abs(t.shells)} 🐚`;
+                            return `<div style="background:rgba(255,255,255,0.2); border-radius:10px; padding:10px 12px; margin-bottom:4px;">
+                                <span style="font-weight:700;">提領 ${what}</span>
+                                <span style="font-size:12px; opacity:0.9;"> · ${t.note ? escapeHtml(t.note) : ''} · 等待家長核准</span>
+                            </div>`;
+                        }).join('')}
+                    </div>`;
+                } else {
+                    kidPendingEl.style.display = 'none';
+                }
             } else {
                 pendingSection.style.display = 'none';
+                kidPendingEl.style.display = 'none';
             }
 
             // Transaction history
@@ -3317,9 +3630,13 @@
 
         // ===== SETTINGS TAB =====
         function renderSettings() {
-            // Render monthly weight selector
             renderMonthWeightSelector();
             loadMonthWeights();
+            // Show current PIN hint
+            const pinHint = document.getElementById('currentPinHint');
+            if (pinHint) {
+                pinHint.textContent = parentPin ? `目前密碼：${parentPin.slice(0,1)}***` : '尚未設定密碼';
+            }
         }
 
         function renderMonthWeightSelector() {
