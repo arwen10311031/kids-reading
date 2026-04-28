@@ -5,13 +5,13 @@
 
 const SS_ID = '1eM_i2mf0aIW4oMG_sL2Hi9Z0NqG3bc6wAhE5RCoUhOQ';
 
-const BOOK_COLS = ['id','出版社','書名','已閱','購買日','買入價','購買平台','售出價','售出日','閱讀日','備註','再刷'];
+const BOOK_COLS = ['id','出版社','書名','已閱','購買日','買入價','購買平台','售出價','售出日','閱讀日','備註','再刷','語言'];
 const TREASURE_COLS = ['id','日期','類型','鑽石','貝殼','備註','狀態'];
 const BOOK_MAP = {
   'id':'id','出版社':'publisher','書名':'title','已閱':'read',
   '購買日':'purchaseDate','買入價':'price','購買平台':'platform',
   '售出價':'soldPrice','售出日':'soldDate','閱讀日':'readDate',
-  '備註':'note','再刷':'reprint'
+  '備註':'note','再刷':'reprint','語言':'lang'
 };
 
 function rewardHeaders() {

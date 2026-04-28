@@ -1225,11 +1225,19 @@
                     </div>
 
                     <div class="filter-row">
+                        <select id="langFilter" class="filter-select">
+                            <option value="">語言 - 全部</option>
+                            <option value="zh">中文</option>
+                            <option value="en">英文</option>
+                        </select>
                         <select id="soldFilter" class="filter-select">
                             <option value="">售出狀態 - 全部</option>
                             <option value="sold">已售</option>
                             <option value="unsold">未售</option>
                         </select>
+                    </div>
+
+                    <div class="filter-row">
                         <select id="sortFilter" class="filter-select">
                             <option value="date-newest">購買日(新→舊)</option>
                             <option value="date-oldest">購買日(舊→新)</option>
@@ -1301,7 +1309,13 @@
                             <label class="form-label">🔢 閱讀次數</label>
                             <input type="number" id="readCountInput" class="form-input" min="0" value="0">
                         </div>
-                        <div class="form-group"></div>
+                        <div class="form-group">
+                            <label class="form-label">🌐 語言</label>
+                            <select id="langInput" class="form-select">
+                                <option value="zh">中文</option>
+                                <option value="en">英文</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="form-row">
@@ -1326,38 +1340,11 @@
 
             <!-- TAB 3: STATISTICS -->
             <div id="statisticsTab" class="tab-content">
-                <div class="stat-card">
-                    <div class="stat-title">購買總金額</div>
-                    <div class="stat-value" id="totalPurchaseValue">NT 0</div>
-                </div>
+                <!-- 金額統計：合計 / 中文 / 英文 -->
+                <div id="financeStats"></div>
 
-                <div class="stat-card secondary">
-                    <div class="stat-title">已售出金額</div>
-                    <div class="stat-value" id="totalSoldValue">NT 0</div>
-                </div>
-
-                <div class="stat-card success">
-                    <div class="stat-title">淨成本</div>
-                    <div class="stat-value" id="netCostValue">NT 0</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-title">書籍統計</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px;">
-                        <div style="text-align: center;">
-                            <div style="font-size: 20px; font-weight: 700; color: var(--color-primary);" id="totalBooks">0</div>
-                            <div style="font-size: 11px; color: var(--color-text-light); margin-top: 4px;">總數</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 20px; font-weight: 700; color: var(--color-secondary);" id="readBooks">0</div>
-                            <div style="font-size: 11px; color: var(--color-text-light); margin-top: 4px;">已讀</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 20px; font-weight: 700; color: var(--color-accent);" id="readRate">0%</div>
-                            <div style="font-size: 11px; color: var(--color-text-light); margin-top: 4px;">閱讀率</div>
-                        </div>
-                    </div>
-                </div>
+                <!-- 書籍統計：合計 / 中文 / 英文 -->
+                <div id="bookCountStats"></div>
 
                 <div class="chart-container">
                     <div class="chart-title">📅 閱讀統計 (年 → 月 → 書)</div>
@@ -1424,7 +1411,7 @@
                     <div style="text-align:center; margin-top:8px; font-size:12px; opacity:0.8;">🔥 連續打卡，貝殼加倍收！</div>
                 </div>
 
-                <div style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius:var(--radius-lg); padding:16px; margin-bottom:12px; color:white; box-shadow:0 4px 15px rgba(102,126,234,0.4);">
+                <div style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius:var(--radius-lg); padding:16px; margin-bottom:12px; color:white; box-shadow:0 4px 15px rgba(102,126,234,0.4); cursor:pointer;" onclick="showLevelsModal()">
                     <div style="text-align:center; margin-bottom:12px;">
                         <div id="levelIconBig" style="font-size:56px; line-height:1; filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3)); animation:bounce 2s infinite;">🌱</div>
                         <div id="levelName" style="font-size:20px; font-weight:800; margin-top:6px; text-shadow:0 2px 4px rgba(0,0,0,0.2);">小書蟲</div>
@@ -1443,7 +1430,7 @@
                     <div style="background:rgba(255,255,255,0.2); border-radius:10px; padding:8px 12px;">
                         <div style="display:flex; justify-content:space-between; font-size:11px; opacity:0.8; margin-bottom:4px;">
                             <span id="levelProgress">升級中...</span>
-                            <span id="nextLevelHint">下一級：🌿</span>
+                            <span id="nextLevelHint" style="font-size:13px;">下一級：🌿 點我看全部等級</span>
                         </div>
                         <div class="progress-bar" style="background:rgba(255,255,255,0.2);">
                             <div class="progress-fill" id="levelProgressBar" style="width: 0%; background:linear-gradient(90deg, #FFD700, #FFA500);"></div>
@@ -1650,6 +1637,16 @@
                             <input type="number" id="editReadCount" class="form-input" min="0" value="0">
                         </div>
                     </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">🌐 語言</label>
+                            <select id="editLang" class="form-select">
+                                <option value="zh">中文</option>
+                                <option value="en">英文</option>
+                            </select>
+                        </div>
+                        <div class="form-group"></div>
+                    </div>
                     <div class="form-group">
                         <label class="form-label">閱讀日期紀錄</label>
                         <div id="editReadDatesDisplay" style="font-size:13px; color:var(--color-text-light); margin-bottom:6px;"></div>
@@ -1678,6 +1675,20 @@
             <div class="modal-footer">
                 <button onclick="closeModal('editModal')" style="background-color: var(--color-border); color: var(--color-text);">取消</button>
                 <button onclick="saveEditedBook()" style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%); color: white;">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Levels Modal -->
+    <div id="levelsModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">🏅 等級總覽</div>
+                <button class="modal-close" onclick="closeModal('levelsModal')">✕</button>
+            </div>
+            <div class="modal-body" id="levelsBody"></div>
+            <div class="modal-footer">
+                <button onclick="closeModal('levelsModal')" style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%); color: white;">關閉</button>
             </div>
         </div>
     </div>
@@ -1835,8 +1846,13 @@
             publisher: '',
             read: '',
             sold: '',
+            lang: '',
             sort: 'date-newest'
         };
+
+        function isEnglishBook(book) {
+            return book && book.lang === 'en';
+        }
 
         // ===== KID / PARENT MODE =====
         let userMode = 'kid'; // 'kid' or 'parent'
@@ -1974,6 +1990,13 @@
 
                 // Books
                 books = data.books || [];
+
+                // 預設語言標籤：peppa pig 為英文，其他為中文
+                books.forEach(b => {
+                    if (!b.lang) {
+                        b.lang = (b.title && b.title.toLowerCase().includes('peppa pig')) ? 'en' : 'zh';
+                    }
+                });
 
                 // Merge confirmed rewards + pending
                 // Step 1: Normalize all month keys and group by normalized key
@@ -2188,6 +2211,15 @@
                 }
             }
 
+            // Language filter
+            if (filters.lang) {
+                if (filters.lang === 'en') {
+                    filtered = filtered.filter(b => isEnglishBook(b));
+                } else if (filters.lang === 'zh') {
+                    filtered = filtered.filter(b => !isEnglishBook(b));
+                }
+            }
+
             // Sold status filter
             if (filters.sold) {
                 if (filters.sold === 'sold') {
@@ -2237,6 +2269,7 @@
                     <div class="book-card-header">
                         <div class="book-title">${escapeHtml(book.title)}</div>
                         <div class="book-badges">
+                            ${book.lang === 'en' ? '<span class="badge" style="background:#E3F2FD; color:#1565C0;">EN</span>' : '<span class="badge" style="background:#FFF3E0; color:#E65100;">中</span>'}
                             ${book.read === 'V' ? '<span class="badge badge-read">✓ 已讀</span>' : ''}
                             ${book.read === 'X' ? '<span class="badge badge-abandoned">✗ 棄讀</span>' : ''}
                             ${book.read === '' ? '<span class="badge badge-unread">未讀</span>' : ''}
@@ -2305,6 +2338,7 @@
             document.getElementById('editSoldPrice').value = book.soldPrice ? Math.abs(book.soldPrice) : '';
             document.getElementById('editSoldDate').value = book.soldDate || '';
             document.getElementById('editNote').value = book.note || '';
+            document.getElementById('editLang').value = book.lang || 'zh';
 
             // Initialize reading date picker to today
             const today = new Date();
@@ -2336,6 +2370,7 @@
             book.soldPrice = soldPrice ? -parseFloat(soldPrice) : null;
             book.soldDate = document.getElementById('editSoldDate').value;
             book.note = document.getElementById('editNote').value;
+            book.lang = document.getElementById('editLang').value || 'zh';
 
             apiPost({ action: 'saveBook', book: book });
             renderLibrary();
@@ -2351,7 +2386,19 @@
                 return;
             }
             const dates = readDateStr.split(',').filter(d => d.trim());
-            display.innerHTML = dates.map((d, i) => `<span style="display:inline-block; background:var(--color-bg); padding:2px 8px; border-radius:6px; margin:2px 4px 2px 0;">${d.trim()}</span>`).join('');
+            display.innerHTML = dates.map((d, i) => `<span onclick="removeReadingDate(${i})" style="display:inline-block; background:var(--color-bg); padding:2px 8px; border-radius:6px; margin:2px 4px 2px 0; cursor:pointer;" title="點擊刪除">${d.trim()} ✕</span>`).join('');
+        }
+
+        function removeReadingDate(index) {
+            const hiddenInput = document.getElementById('editReadDate');
+            const dates = hiddenInput.value.split(',').filter(d => d.trim());
+            dates.splice(index, 1);
+            hiddenInput.value = dates.join(',');
+            updateReadDatesDisplay(hiddenInput.value);
+            // Auto-decrement readCount
+            const countInput = document.getElementById('editReadCount');
+            const current = parseInt(countInput.value || 0);
+            if (current > 0) countInput.value = current - 1;
         }
 
         function addReadingDate() {
@@ -2439,6 +2486,11 @@
                 renderLibrary();
             });
 
+            document.getElementById('langFilter').addEventListener('change', (e) => {
+                filters.lang = e.target.value;
+                renderLibrary();
+            });
+
             document.getElementById('soldFilter').addEventListener('change', (e) => {
                 filters.sold = e.target.value;
                 renderLibrary();
@@ -2494,6 +2546,7 @@
             const soldPrice = document.getElementById('soldPriceInput').value;
             const soldDate = document.getElementById('soldDateInput').value;
             const note = document.getElementById('noteInput').value;
+            const lang = document.getElementById('langInput').value || 'zh';
             const sp = soldPrice ? parseFloat(soldPrice) : null;
             const cost = Math.floor(sp !== null ? price - sp : price);
 
@@ -2514,7 +2567,8 @@
                 bookCount: 1,
                 platform,
                 cost,
-                reprint: ''
+                reprint: '',
+                lang
             });
 
             const newBook = books[books.length - 1];
@@ -2546,102 +2600,181 @@
         }
 
         function renderStatistics() {
-            // Calculate financial summary
-            const totalPurchase = books.reduce((sum, b) => sum + b.price, 0);
-            const totalSold = books.reduce((sum, b) => {
-                if (b.soldPrice) {
-                    return sum + Math.abs(b.soldPrice);
-                }
-                return sum;
-            }, 0);
-            const netCost = totalPurchase - totalSold;
+            const zhBooks = books.filter(b => !isEnglishBook(b));
+            const enBooks = books.filter(b => isEnglishBook(b));
 
-            document.getElementById('totalPurchaseValue').textContent = userMode === 'kid' ? '*****' : `NT ${fmtMoney(totalPurchase)}`;
-            document.getElementById('totalSoldValue').textContent = userMode === 'kid' ? '*****' : `NT ${fmtMoney(totalSold)}`;
-            document.getElementById('netCostValue').textContent = userMode === 'kid' ? '*****' : `NT ${fmtMoney(netCost)}`;
+            // === 金額統計 ===
+            function calcFinance(list) {
+                const purchase = list.reduce((s, b) => s + b.price, 0);
+                const sold = list.reduce((s, b) => b.soldPrice ? s + Math.abs(b.soldPrice) : s, 0);
+                return { purchase, sold, net: purchase - sold };
+            }
+            const allF = calcFinance(books);
+            const zhF = calcFinance(zhBooks);
+            const enF = calcFinance(enBooks);
 
-            // Book statistics
-            const totalBooks = books.length;
-            const readBooks = books.filter(b => b.read === 'V').length;
-            const readRate = totalBooks > 0 ? Math.round((readBooks / totalBooks) * 100) : 0;
+            const isKid = userMode === 'kid';
+            const fVal = (v) => isKid ? '*****' : `NT ${fmtMoney(v)}`;
 
-            document.getElementById('totalBooks').textContent = totalBooks;
-            document.getElementById('readBooks').textContent = readBooks;
-            document.getElementById('readRate').textContent = `${readRate}%`;
+            document.getElementById('financeStats').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-title">購買總金額</div>
+                    <div class="stat-value">${fVal(allF.purchase)}</div>
+                    ${isKid ? '' : `<div style="display:flex; justify-content:space-around; margin-top:8px; font-size:12px; color:var(--color-text-light);">
+                        <span>中文 ${fVal(zhF.purchase)}</span><span>英文 ${fVal(enF.purchase)}</span>
+                    </div>`}
+                </div>
+                <div class="stat-card secondary">
+                    <div class="stat-title">已售出金額</div>
+                    <div class="stat-value">${fVal(allF.sold)}</div>
+                    ${isKid ? '' : `<div style="display:flex; justify-content:space-around; margin-top:8px; font-size:12px; color:var(--color-text-light);">
+                        <span>中文 ${fVal(zhF.sold)}</span><span>英文 ${fVal(enF.sold)}</span>
+                    </div>`}
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-title">淨成本</div>
+                    <div class="stat-value">${fVal(allF.net)}</div>
+                    ${isKid ? '' : `<div style="display:flex; justify-content:space-around; margin-top:8px; font-size:12px; color:var(--color-text-light);">
+                        <span>中文 ${fVal(zhF.net)}</span><span>英文 ${fVal(enF.net)}</span>
+                    </div>`}
+                </div>`;
 
-            // Unified year > month > book hierarchy
-            const yearlyReads = {};
-            const monthlyReads = {};
-            const monthlyBooks = {};
-            books.forEach(b => {
-                if (b.readDate) {
-                    const dates = b.readDate.split(',').map(d => normalizeDate(d.trim())).filter(d => d);
-                    dates.forEach(dateStr => {
-                        const year = dateStr.slice(0, 4);
-                        const month = dateStr.slice(0, 7);
-                        if (!/^\d{4}/.test(year)) return;
-                        yearlyReads[year] = (yearlyReads[year] || 0) + 1;
-                        monthlyReads[month] = (monthlyReads[month] || 0) + 1;
-                        if (!monthlyBooks[month]) monthlyBooks[month] = [];
-                        monthlyBooks[month].push(b);
-                    });
-                }
-            });
+            // === 書籍統計 (以書本為單位，不重複計算) ===
+            function calcBookStats(list) {
+                const total = list.length;
+                const read = list.filter(b => b.read === 'V').length;
+                const rate = total > 0 ? Math.round((read / total) * 100) : 0;
+                return { total, read, rate };
+            }
+            const allS = calcBookStats(books);
+            const zhS = calcBookStats(zhBooks);
+            const enS = calcBookStats(enBooks);
 
-            const sortedYears = Object.keys(yearlyReads).sort();
-            const maxYearlyReads = Math.max(...Object.values(yearlyReads), 1);
+            document.getElementById('bookCountStats').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-title">書籍統計</div>
+                    <div style="margin-top:8px;">
+                        <div style="display:grid; grid-template-columns:60px 1fr 1fr 1fr; gap:4px; align-items:center; font-size:13px; text-align:center;">
+                            <div></div>
+                            <div style="font-size:11px; color:var(--color-text-light);">總數</div>
+                            <div style="font-size:11px; color:var(--color-text-light);">已讀</div>
+                            <div style="font-size:11px; color:var(--color-text-light);">閱讀率</div>
 
-            let statsChart = '';
-            sortedYears.forEach(year => {
-                const yearCount = yearlyReads[year];
-                const yearPercent = (yearCount / maxYearlyReads) * 100;
-                const yearId = 'year_' + year;
+                            <div style="font-size:12px; font-weight:600; text-align:left;">合計</div>
+                            <div style="font-size:20px; font-weight:700; color:var(--color-primary);">${allS.total}</div>
+                            <div style="font-size:20px; font-weight:700; color:var(--color-secondary);">${allS.read}</div>
+                            <div style="font-size:20px; font-weight:700; color:var(--color-accent);">${allS.rate}%</div>
 
-                // Get months for this year
-                const yearMonths = Object.keys(monthlyReads).filter(m => m.startsWith(year)).sort();
-                const maxMonthReads = Math.max(...yearMonths.map(m => monthlyReads[m]), 1);
+                            <div style="font-size:12px; font-weight:600; text-align:left;">中文</div>
+                            <div style="font-size:16px; font-weight:600; color:var(--color-primary);">${zhS.total}</div>
+                            <div style="font-size:16px; font-weight:600; color:var(--color-secondary);">${zhS.read}</div>
+                            <div style="font-size:16px; font-weight:600; color:var(--color-accent);">${zhS.rate}%</div>
 
-                let monthsHtml = yearMonths.map(month => {
-                    const monthCount = monthlyReads[month];
-                    const monthPercent = (monthCount / maxMonthReads) * 100;
-                    const monthId = 'month_' + month.replace('-','');
-                    const bookListHtml = (monthlyBooks[month] || []).map(b => `
-                        <div class="expandable-item">
-                            <div style="font-weight:600; color:var(--color-text);">${escapeHtml(b.title)}</div>
-                            <div style="color:var(--color-text-light);">${escapeHtml(b.publisher)}${b.readDate ? ' · 閱讀: ' + b.readDate.split(',').map(d => normalizeDate(d.trim())).filter(d=>d).join(', ') : ''}</div>
+                            <div style="font-size:12px; font-weight:600; text-align:left;">英文</div>
+                            <div style="font-size:16px; font-weight:600; color:var(--color-primary);">${enS.total}</div>
+                            <div style="font-size:16px; font-weight:600; color:var(--color-secondary);">${enS.read}</div>
+                            <div style="font-size:16px; font-weight:600; color:var(--color-accent);">${enS.rate}%</div>
                         </div>
-                    `).join('');
-                    return `
-                        <div style="padding-left:16px;">
-                            <div class="expandable-header" id="${monthId}Header" onclick="toggleExpand('${monthId}')">
-                                <span>${month} — ${monthCount}本</span>
-                                <span class="arrow">▼</span>
-                            </div>
-                            <div class="expandable-list" id="${monthId}List">
-                                ${bookListHtml}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+                    </div>
+                </div>`;
 
-                statsChart += `
-                    <div style="cursor:pointer;" onclick="toggleExpand('${yearId}')">
-                        <div class="chart-bar">
-                            <div class="chart-bar-label">${year}年</div>
-                            <div class="chart-bar-bg">
-                                <div class="chart-bar-fill" style="width: ${yearPercent}%">
-                                    <div class="chart-bar-value">${yearCount}本</div>
+            // === 閱讀統計 (以書本為單位，同一本書不重複計入同月) ===
+            function buildReadingStats(bookList, prefix) {
+                const yearlyReads = {};
+                const monthlyReads = {};
+                const monthlyBookSet = {};  // 用 Set 避免同本書重複計入
+                const monthlyBookList = {};
+                bookList.forEach(b => {
+                    if (b.readDate) {
+                        const dates = b.readDate.split(',').map(d => normalizeDate(d.trim())).filter(d => d);
+                        const seenMonths = new Set();
+                        dates.forEach(dateStr => {
+                            const year = dateStr.slice(0, 4);
+                            const month = dateStr.slice(0, 7);
+                            if (!/^\d{4}/.test(year)) return;
+                            // 同一本書在同月只計一次
+                            const key = month + '|' + b.id;
+                            if (seenMonths.has(key)) return;
+                            seenMonths.add(key);
+                            yearlyReads[year] = (yearlyReads[year] || 0) + 1;
+                            monthlyReads[month] = (monthlyReads[month] || 0) + 1;
+                            if (!monthlyBookList[month]) monthlyBookList[month] = [];
+                            monthlyBookList[month].push(b);
+                        });
+                    }
+                });
+                return { yearlyReads, monthlyReads, monthlyBookList };
+            }
+
+            function renderStatsChart(stats, prefix) {
+                const { yearlyReads, monthlyReads, monthlyBookList } = stats;
+                const sortedYears = Object.keys(yearlyReads).sort();
+                const maxYearlyReads = Math.max(...Object.values(yearlyReads), 1);
+                let html = '';
+                sortedYears.forEach(year => {
+                    const yearCount = yearlyReads[year];
+                    const yearPercent = (yearCount / maxYearlyReads) * 100;
+                    const yearId = prefix + 'year_' + year;
+                    const yearMonths = Object.keys(monthlyReads).filter(m => m.startsWith(year)).sort();
+                    const maxMonthReads = Math.max(...yearMonths.map(m => monthlyReads[m]), 1);
+
+                    let monthsHtml = yearMonths.map(month => {
+                        const monthCount = monthlyReads[month];
+                        const monthId = prefix + 'month_' + month.replace('-','');
+                        const bookListHtml = (monthlyBookList[month] || []).map(b => `
+                            <div class="expandable-item">
+                                <div style="font-weight:600; color:var(--color-text);">${escapeHtml(b.title)}</div>
+                                <div style="color:var(--color-text-light);">${escapeHtml(b.publisher)}</div>
+                            </div>
+                        `).join('');
+                        return `
+                            <div style="padding-left:16px;">
+                                <div class="expandable-header" id="${monthId}Header" onclick="toggleExpand('${monthId}')">
+                                    <span>${month} — ${monthCount}本</span>
+                                    <span class="arrow">▼</span>
+                                </div>
+                                <div class="expandable-list" id="${monthId}List">${bookListHtml}</div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    html += `
+                        <div style="cursor:pointer;" onclick="toggleExpand('${yearId}')">
+                            <div class="chart-bar">
+                                <div class="chart-bar-label">${year}年</div>
+                                <div class="chart-bar-bg">
+                                    <div class="chart-bar-fill" style="width: ${yearPercent}%">
+                                        <div class="chart-bar-value">${yearCount}本</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="expandable-list" id="${yearId}List" style="max-height:0; overflow:hidden; transition:max-height 0.3s ease;">
-                        ${monthsHtml}
-                    </div>
-                `;
-            });
+                        <div class="expandable-list" id="${yearId}List" style="max-height:0; overflow:hidden; transition:max-height 0.3s ease;">${monthsHtml}</div>
+                    `;
+                });
+                return html;
+            }
 
-            document.getElementById('readingStatsChart').innerHTML = statsChart || '<div style="color: var(--color-text-light); text-align: center; padding: 20px;">還沒有閱讀記錄</div>';
+            const allStats = buildReadingStats(books, 'all_');
+            const zhStats = buildReadingStats(zhBooks, 'zh_');
+            const enStats = buildReadingStats(enBooks, 'en_');
+
+            const noData = '<div style="color:var(--color-text-light); text-align:center; padding:20px;">還沒有閱讀記錄</div>';
+
+            document.getElementById('readingStatsChart').innerHTML = `
+                <div style="margin-bottom:12px;">
+                    <div style="font-weight:600; font-size:14px; margin-bottom:6px;">📚 合計</div>
+                    ${renderStatsChart(allStats, 'all_') || noData}
+                </div>
+                <div style="margin-bottom:12px;">
+                    <div style="font-weight:600; font-size:14px; margin-bottom:6px;">🇹🇼 中文</div>
+                    ${renderStatsChart(zhStats, 'zh_') || noData}
+                </div>
+                <div style="margin-bottom:12px;">
+                    <div style="font-weight:600; font-size:14px; margin-bottom:6px;">🇺🇸 英文</div>
+                    ${renderStatsChart(enStats, 'en_') || noData}
+                </div>
+            `;
         }
 
         // ===== REWARDS TAB =====
@@ -3361,6 +3494,46 @@
             document.getElementById('levelProgressBar').style.width = `${Math.min(100, progressPercent)}%`;
         }
 
+        function showLevelsModal() {
+            const totalShells = Object.values(rewards).reduce((sum, m) => sum + (m.total || 0), 0);
+            const totalDiamonds = Math.floor(totalShells / 10);
+
+            const levels = [
+                { emoji: '🌱', name: '小書蟲', min: 0, max: 10 },
+                { emoji: '🌿', name: '閱讀新星', min: 10, max: 30 },
+                { emoji: '🌳', name: '知識探險家', min: 30, max: 60 },
+                { emoji: '🏆', name: '閱讀達人', min: 60, max: 100 },
+                { emoji: '👑', name: '書香大師', min: 100, max: 150 },
+                { emoji: '🌟', name: '超級閱讀王', min: 150, max: 200 },
+                { emoji: '🎆', name: '傳說中的讀書神', min: 200, max: 999 }
+            ];
+
+            let html = '<div style="font-size:13px; color:var(--color-text-light); text-align:center; margin-bottom:12px;">目前累計 <strong style="color:var(--color-primary);">' + totalDiamonds + ' 💎</strong></div>';
+
+            levels.forEach(lv => {
+                const isCurrent = totalDiamonds >= lv.min && totalDiamonds < lv.max;
+                const isReached = totalDiamonds >= lv.min;
+                const bg = isCurrent ? 'linear-gradient(135deg, #667eea, #764ba2)' : (isReached ? 'var(--color-success)' : 'var(--color-bg)');
+                const color = isCurrent ? 'white' : (isReached ? '#155724' : 'var(--color-text-light)');
+                const border = isCurrent ? '2px solid #FFD700' : '1px solid var(--color-border)';
+
+                html += `
+                <div style="display:flex; align-items:center; gap:12px; padding:12px; border-radius:12px; margin-bottom:8px; background:${bg}; color:${color}; border:${border};">
+                    <div style="font-size:36px; line-height:1;">${lv.emoji}</div>
+                    <div style="flex:1;">
+                        <div style="font-weight:700; font-size:15px;">${lv.name}</div>
+                        <div style="font-size:12px; opacity:0.8;">${lv.min} ~ ${lv.max === 999 ? '∞' : lv.max} 💎</div>
+                    </div>
+                    <div style="font-size:13px; font-weight:600;">
+                        ${isCurrent ? '👈 目前' : (isReached ? '✅' : '🔒')}
+                    </div>
+                </div>`;
+            });
+
+            document.getElementById('levelsBody').innerHTML = html;
+            openModal('levelsModal');
+        }
+
         function renderMonthSelector() {
             const selector = document.getElementById('monthSelector');
             const monthKeys = Object.keys(rewards).sort().reverse();
@@ -3384,13 +3557,60 @@
             const diamonds = Math.floor((monthData.total || 0) / 10);
             const shells = (monthData.total || 0) % 10;
 
+            // 計算每日得分
+            const daysInMonth = getDaysInMonth(parseInt(year), parseInt(month));
+            const dailyPoints = {};
+            monthData.tasks.forEach(task => {
+                Object.entries(task.daily || {}).forEach(([day, count]) => {
+                    const d = parseInt(day);
+                    dailyPoints[d] = (dailyPoints[d] || 0) + count * task.points;
+                });
+            });
+
+            // 按日期排序，只顯示有資料的天
+            const activeDays = Object.keys(dailyPoints).map(Number).sort((a, b) => a - b);
+
+            let dailyHtml = '';
+            if (activeDays.length > 0) {
+                dailyHtml = activeDays.map(day => {
+                    const pts = dailyPoints[day];
+                    // 計算該日各任務明細
+                    const details = monthData.tasks
+                        .filter(t => t.daily && t.daily[day] && t.daily[day] > 0)
+                        .map(t => `${t.name} ×${t.daily[day]}`)
+                        .join('、');
+                    return `
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.15); font-size:12px;">
+                            <div>
+                                <span style="font-weight:600;">${parseInt(month)}/${day}</span>
+                                <span style="opacity:0.7; margin-left:6px;">${details}</span>
+                            </div>
+                            <div style="font-weight:700; white-space:nowrap;">${pts} 🐚</div>
+                        </div>`;
+                }).join('');
+            } else {
+                dailyHtml = '<div style="text-align:center; font-size:12px; opacity:0.7; padding:8px;">這個月沒有打卡紀錄</div>';
+            }
+
+            // 月結轉存按鈕（家長模式限定）
+            const depositBtnHtml = rewardMode === 'parent' && monthData.total > 0 ? `
+                <div style="margin-top:8px; text-align:center;" class="parent-only">
+                    <button onclick="depositMonthToTreasure('${selectedMonth}')" style="padding:8px 20px; border:none; border-radius:10px; background:linear-gradient(135deg, #FFD700, #FFA500); color:white; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(255,165,0,0.3);">
+                        🎒 月結轉存百寶箱 (${diamonds}💎 + ${shells}🐚)
+                    </button>
+                </div>` : '';
+
             let html = `
                 <div style="background:rgba(255,255,255,0.2); border-radius:10px; padding:12px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                         <div style="font-weight:700;">${year}年${parseInt(month)}月</div>
                         <div style="font-size:18px; font-weight:800;">${monthData.total} 🐚</div>
                     </div>
-                    <div style="font-size:12px; opacity:0.8; margin-top:4px;">= ${diamonds} 💎 + ${shells} 🐚</div>
+                    <div style="font-size:12px; opacity:0.8; margin-bottom:8px;">= ${diamonds} 💎 + ${shells} 🐚</div>
+                    <div style="border-top:1px solid rgba(255,255,255,0.2); padding-top:6px;">
+                        ${dailyHtml}
+                    </div>
+                    ${depositBtnHtml}
                 </div>
             `;
 
@@ -3544,6 +3764,38 @@
                     </div>`;
                 }).join('');
             }
+        }
+
+        function depositMonthToTreasure(monthKey) {
+            if (parentOnly()) return;
+            const monthData = rewards[monthKey];
+            if (!monthData || !monthData.total) { showToast('❌ 該月沒有積分'); return; }
+
+            const totalShells = monthData.total;
+            const diamonds = Math.floor(totalShells / 10);
+            const shells = totalShells % 10;
+            const [year, month] = monthKey.split('-');
+            const note = `${year}年${parseInt(month)}月 月結轉存`;
+
+            if (!confirm(`確定要將 ${year}年${parseInt(month)}月 的 ${diamonds}💎 + ${shells}🐚 轉存到百寶箱嗎？`)) return;
+
+            const today = new Date().toISOString().split('T')[0];
+
+            // 存入鑽石
+            if (diamonds > 0) {
+                const entryD = { id: Date.now(), date: today, type: '存入', diamonds: diamonds, shells: 0, note: note, status: '已確認' };
+                treasureData.push(entryD);
+                apiPost({ action: 'addTreasure', date: today, type: '存入', diamonds: diamonds, shells: 0, note: note, status: '已確認' });
+            }
+            // 存入貝殼
+            if (shells > 0) {
+                const entryS = { id: Date.now() + 1, date: today, type: '存入', diamonds: 0, shells: shells, note: note, status: '已確認' };
+                treasureData.push(entryS);
+                apiPost({ action: 'addTreasure', date: today, type: '存入', diamonds: 0, shells: shells, note: note, status: '已確認' });
+            }
+
+            renderTreasure();
+            showToast(`✅ 已轉存 ${diamonds}💎 + ${shells}🐚 到百寶箱！`);
         }
 
         function depositTreasure() {
