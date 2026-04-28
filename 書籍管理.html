@@ -1210,7 +1210,7 @@
             <!-- TAB 1: LIBRARY -->
             <div id="libraryTab" class="tab-content active">
                 <div class="filter-section">
-                    <input type="text" id="searchInput" class="search-bar" placeholder="🔍 搜尋書名、出版社、備註...">
+                    <input type="text" id="searchInput" class="search-bar" placeholder="🔍 搜尋書名、出版社、備註..." autocomplete="off">
 
                     <div class="filter-row">
                         <select id="publisherFilter" class="filter-select">
@@ -2471,7 +2471,12 @@
         }
 
         function setupEventListeners() {
-            document.getElementById('searchInput').addEventListener('input', (e) => {
+            // 清空搜尋欄，防止瀏覽器自動填入舊值
+            const searchEl = document.getElementById('searchInput');
+            searchEl.value = '';
+            filters.search = '';
+
+            searchEl.addEventListener('input', (e) => {
                 filters.search = e.target.value;
                 renderLibrary();
             });
