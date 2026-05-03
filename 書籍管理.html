@@ -86,7 +86,7 @@
             flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
-            padding-bottom: 80px;
+            padding-bottom: 100px;
             -webkit-overflow-scrolling: touch;
         }
 
@@ -170,6 +170,30 @@
             margin-bottom: 8px;
             font-family: inherit;
         }
+        .search-wrapper {
+            position: relative;
+            margin-bottom: 8px;
+        }
+        .search-wrapper .search-bar {
+            margin-bottom: 0;
+            padding-right: 36px;
+        }
+        .search-clear-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: var(--color-text-light);
+            opacity: 0.5;
+            padding: 2px 6px;
+            line-height: 1;
+            display: none;
+        }
+        .search-clear-btn:hover { opacity: 1; }
 
         .filter-row {
             display: grid;
@@ -918,8 +942,7 @@
             transition: max-height 0.3s ease;
         }
         .expandable-list.open {
-            max-height: 400px;
-            overflow-y: auto;
+            max-height: none;
         }
         .expandable-item {
             padding: 6px 12px;
@@ -1080,7 +1103,7 @@
             }
 
             .content {
-                padding-bottom: 90px;
+                padding-bottom: 110px;
             }
 
             .calendar-day {
@@ -1210,7 +1233,10 @@
             <!-- TAB 1: LIBRARY -->
             <div id="libraryTab" class="tab-content active">
                 <div class="filter-section">
-                    <input type="text" id="searchInput" class="search-bar" placeholder="🔍 搜尋書名、出版社、備註..." autocomplete="off">
+                    <div class="search-wrapper">
+                        <input type="text" id="searchInput" class="search-bar" placeholder="🔍 搜尋書名、出版社、備註..." autocomplete="off">
+                        <button class="search-clear-btn" id="searchClearBtn" onclick="clearSearch()" title="清除搜尋">✕</button>
+                    </div>
 
                     <div class="filter-row">
                         <select id="publisherFilter" class="filter-select">
@@ -1245,6 +1271,7 @@
                             <option value="price-low">價格(低→高)</option>
                             <option value="title">書名</option>
                         </select>
+                        <button onclick="clearAllFilters()" style="padding:8px 14px; border:1px solid var(--color-border); border-radius:var(--radius); background:white; font-size:13px; cursor:pointer; white-space:nowrap; color:var(--color-text-light);">🗑 清除篩選</button>
                     </div>
                 </div>
 
@@ -1408,7 +1435,7 @@
                         <div style="font-size:22px; font-weight:800;" id="monthlyTotal">0</div>
                     </div>
                     <div id="monthlyCalendar" class="calendar-grid" style="background:rgba(255,255,255,0.15); border-radius:10px; padding:8px;"></div>
-                    <div style="text-align:center; margin-top:8px; font-size:12px; opacity:0.8;">🔥 連續打卡，貝殼加倍收！</div>
+                    <div style="text-align:center; margin-top:8px; font-size:12px; opacity:0.8;">📅 每天打卡，累積寶物！</div>
                 </div>
 
                 <div style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius:var(--radius-lg); padding:16px; margin-bottom:12px; color:white; box-shadow:0 4px 15px rgba(102,126,234,0.4); cursor:pointer;" onclick="showLevelsModal()">
@@ -1810,19 +1837,25 @@
             return resp.json();
         }
 
+        // API 請求排隊機制：確保每個請求完成後才發下一個，避免 Google Sheets 競爭條件
+        let _apiQueue = Promise.resolve();
         async function apiPost(data) {
-            try {
-                const resp = await fetch(API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(data)
-                });
-                const result = await resp.json();
-                if (result.error) console.error('API error:', data.action, result.error);
-                return result;
-            } catch(err) {
-                console.error('API error:', data.action, err);
-                return { error: err.message };
-            }
+            const task = _apiQueue.then(async () => {
+                try {
+                    const resp = await fetch(API_URL, {
+                        method: 'POST',
+                        body: JSON.stringify(data)
+                    });
+                    const result = await resp.json();
+                    if (result.error) console.error('API error:', data.action, result.error);
+                    return result;
+                } catch(err) {
+                    console.error('API error:', data.action, err);
+                    return { error: err.message };
+                }
+            });
+            _apiQueue = task.catch(() => {}); // keep queue alive on error
+            return task;
         }
 
         // Default reward tasks
@@ -2080,9 +2113,14 @@
 
                 // Settings
                 parentPin = String((data.settings || {}).parentPin || '');
+                currentLevelTheme = String((data.settings || {}).levelTheme || 'book');
+                levelThemeStartShells = Number((data.settings || {}).levelThemeStartShells || 0);
 
                 // Treasure box
                 treasureData = data.treasure || [];
+
+                // 從百寶箱紀錄推算哪些月份已月結轉存
+                markDepositedMonths();
 
             } catch(err) {
                 console.error('API load error:', err);
@@ -2092,6 +2130,25 @@
                 rewardTasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
                 treasureData = [];
             }
+        }
+
+        // 從百寶箱紀錄推算哪些月已結算
+        function markDepositedMonths() {
+            // 百寶箱裡 note 含「月結轉存」且 status 為已確認的，解析出月份
+            const depositedMonths = new Set();
+            treasureData.forEach(t => {
+                if (t.status === '已確認' && t.note && t.note.includes('月結轉存')) {
+                    // note 格式: "2026年4月 月結轉存" → 解析出 "2026-04"
+                    const match = t.note.match(/(\d{4})年(\d{1,2})月/);
+                    if (match) {
+                        const mk = match[1] + '-' + String(match[2]).padStart(2, '0');
+                        depositedMonths.add(mk);
+                    }
+                }
+            });
+            Object.keys(rewards).forEach(mk => {
+                rewards[mk].deposited = depositedMonths.has(mk);
+            });
         }
 
         // Save functions: no-ops (individual API calls handle persistence)
@@ -2470,6 +2527,31 @@
                 });
         }
 
+        function clearSearch() {
+            const el = document.getElementById('searchInput');
+            el.value = '';
+            filters.search = '';
+            document.getElementById('searchClearBtn').style.display = 'none';
+            renderLibrary();
+        }
+
+        function clearAllFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('publisherFilter').value = '';
+            document.getElementById('readFilter').value = '';
+            document.getElementById('langFilter').value = '';
+            document.getElementById('soldFilter').value = '';
+            document.getElementById('sortFilter').value = 'date-newest';
+            document.getElementById('searchClearBtn').style.display = 'none';
+            filters = { search: '', publisher: '', read: '', sold: '', lang: '', sort: 'date-newest' };
+            renderLibrary();
+        }
+
+        function updateSearchClearBtn() {
+            const btn = document.getElementById('searchClearBtn');
+            btn.style.display = document.getElementById('searchInput').value ? 'block' : 'none';
+        }
+
         function setupEventListeners() {
             // 清空搜尋欄，防止瀏覽器自動填入舊值
             const searchEl = document.getElementById('searchInput');
@@ -2478,6 +2560,7 @@
 
             searchEl.addEventListener('input', (e) => {
                 filters.search = e.target.value;
+                updateSearchClearBtn();
                 renderLibrary();
             });
 
@@ -2599,7 +2682,15 @@
                     list.style.maxHeight = '0';
                 } else {
                     list.classList.add('open');
-                    list.style.maxHeight = list.scrollHeight + 500 + 'px';
+                    list.style.maxHeight = 'none';
+                    // 也展開所有父層容器的 max-height
+                    let parent = list.parentElement;
+                    while (parent) {
+                        if (parent.classList && parent.classList.contains('expandable-list') && parent.classList.contains('open')) {
+                            parent.style.maxHeight = 'none';
+                        }
+                        parent = parent.parentElement;
+                    }
                 }
             }
         }
@@ -2683,53 +2774,81 @@
                     </div>
                 </div>`;
 
-            // === 閱讀統計 (以書本為單位，同一本書不重複計入同月) ===
+            // === 閱讀統計 (同一本書在同月只計1次，年度也獨立去重，已讀無日期歸入未知) ===
             function buildReadingStats(bookList, prefix) {
                 const yearlyReads = {};
                 const monthlyReads = {};
-                const monthlyBookSet = {};  // 用 Set 避免同本書重複計入
                 const monthlyBookList = {};
+                const seenMonthBook = new Set();
+                const seenYearBook = new Set();
+                const countedBookIds = new Set();  // 追蹤已被日期統計過的書
+
                 bookList.forEach(b => {
                     if (b.readDate) {
                         const dates = b.readDate.split(',').map(d => normalizeDate(d.trim())).filter(d => d);
-                        const seenMonths = new Set();
                         dates.forEach(dateStr => {
                             const year = dateStr.slice(0, 4);
                             const month = dateStr.slice(0, 7);
                             if (!/^\d{4}/.test(year)) return;
-                            // 同一本書在同月只計一次
-                            const key = month + '|' + b.id;
-                            if (seenMonths.has(key)) return;
-                            seenMonths.add(key);
-                            yearlyReads[year] = (yearlyReads[year] || 0) + 1;
+                            const monthKey = month + '|' + b.id;
+                            if (seenMonthBook.has(monthKey)) return;
+                            seenMonthBook.add(monthKey);
+                            countedBookIds.add(b.id);
                             monthlyReads[month] = (monthlyReads[month] || 0) + 1;
                             if (!monthlyBookList[month]) monthlyBookList[month] = [];
-                            monthlyBookList[month].push(b);
+                            monthlyBookList[month].push({ book: b, readDate: dateStr });
+                            const yearKey = year + '|' + b.id;
+                            if (!seenYearBook.has(yearKey)) {
+                                seenYearBook.add(yearKey);
+                                yearlyReads[year] = (yearlyReads[year] || 0) + 1;
+                            }
                         });
                     }
                 });
+
+                // 已讀但沒有日期的書歸入「未知日期」
+                const unknownBooks = bookList.filter(b => b.read === 'V' && !countedBookIds.has(b.id));
+                if (unknownBooks.length > 0) {
+                    const unknownKey = '未知日期';
+                    monthlyReads[unknownKey] = unknownBooks.length;
+                    monthlyBookList[unknownKey] = unknownBooks.map(b => ({ book: b, readDate: '' }));
+                    yearlyReads[unknownKey] = unknownBooks.length;
+                }
+
                 return { yearlyReads, monthlyReads, monthlyBookList };
             }
 
             function renderStatsChart(stats, prefix) {
                 const { yearlyReads, monthlyReads, monthlyBookList } = stats;
-                const sortedYears = Object.keys(yearlyReads).sort();
+                // 正常年份排前面，「未知日期」排最後
+                const sortedYears = Object.keys(yearlyReads).sort((a, b) => {
+                    if (a === '未知日期') return -1;
+                    if (b === '未知日期') return 1;
+                    return a.localeCompare(b);
+                });
                 const maxYearlyReads = Math.max(...Object.values(yearlyReads), 1);
                 let html = '';
                 sortedYears.forEach(year => {
                     const yearCount = yearlyReads[year];
                     const yearPercent = (yearCount / maxYearlyReads) * 100;
-                    const yearId = prefix + 'year_' + year;
-                    const yearMonths = Object.keys(monthlyReads).filter(m => m.startsWith(year)).sort();
-                    const maxMonthReads = Math.max(...yearMonths.map(m => monthlyReads[m]), 1);
+                    const yearId = prefix + 'year_' + year.replace(/[^a-zA-Z0-9]/g, '');
+                    const isUnknown = year === '未知日期';
+                    const yearLabel = isUnknown ? '📋 未知日期' : `${year}年`;
+                    const yearMonths = isUnknown
+                        ? ['未知日期']
+                        : Object.keys(monthlyReads).filter(m => m.startsWith(year) && m !== '未知日期').sort();
+                    const maxMonthReads = Math.max(...yearMonths.map(m => monthlyReads[m] || 0), 1);
 
                     let monthsHtml = yearMonths.map(month => {
                         const monthCount = monthlyReads[month];
-                        const monthId = prefix + 'month_' + month.replace('-','');
-                        const bookListHtml = (monthlyBookList[month] || []).map(b => `
+                        const monthId = prefix + 'month_' + month.replace(/[^a-zA-Z0-9]/g, '');
+                        const bookListHtml = (monthlyBookList[month] || []).sort((a, b) => a.readDate.localeCompare(b.readDate)).map(item => `
                             <div class="expandable-item">
-                                <div style="font-weight:600; color:var(--color-text);">${escapeHtml(b.title)}</div>
-                                <div style="color:var(--color-text-light);">${escapeHtml(b.publisher)}</div>
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div style="font-weight:600; color:var(--color-text);">${escapeHtml(item.book.title)}</div>
+                                    ${item.readDate ? `<div style="font-size:11px; color:var(--color-text-light); white-space:nowrap; margin-left:8px;">${item.readDate.slice(5)}</div>` : ''}
+                                </div>
+                                <div style="color:var(--color-text-light);">${escapeHtml(item.book.publisher)}</div>
                             </div>
                         `).join('');
                         return `
@@ -2746,7 +2865,7 @@
                     html += `
                         <div style="cursor:pointer;" onclick="toggleExpand('${yearId}')">
                             <div class="chart-bar">
-                                <div class="chart-bar-label">${year}年</div>
+                                <div class="chart-bar-label">${yearLabel}</div>
                                 <div class="chart-bar-bg">
                                     <div class="chart-bar-fill" style="width: ${yearPercent}%">
                                         <div class="chart-bar-value">${yearCount}本</div>
@@ -3088,35 +3207,48 @@
             container.innerHTML = html;
         }
 
-        function addPending(taskIdx) {
-            const monthKey = getSelectedMonthKey();
-            const dayNum = getSelectedDayNum();
-            ensureMonthData(monthKey);
+        let _pendingBusy = false;
+        async function addPending(taskIdx) {
+            if (_pendingBusy) return;
+            _pendingBusy = true;
+            try {
+                const monthKey = getSelectedMonthKey();
+                const dayNum = getSelectedDayNum();
+                ensureMonthData(monthKey);
 
-            const task = rewards[monthKey].tasks[taskIdx];
-            const currentCount = parseInt(task.pending[dayNum] || 0);
-            task.pending[dayNum] = currentCount + 1;
+                const task = rewards[monthKey].tasks[taskIdx];
+                const currentCount = parseInt(task.pending[dayNum] || 0);
+                task.pending[dayNum] = currentCount + 1;
+                renderTodayTasks();
 
-            apiPost({ action: 'updateReward', month: monthKey, taskName: task.name, points: task.points, day: dayNum, count: task.pending[dayNum], sheetName: '待確認' });
-            renderTodayTasks();
+                await apiPost({ action: 'updateReward', month: monthKey, taskName: task.name, points: task.points, day: dayNum, count: task.pending[dayNum], sheetName: '待確認' });
+            } finally {
+                _pendingBusy = false;
+            }
         }
 
-        function removePending(taskIdx) {
-            const monthKey = getSelectedMonthKey();
-            const dayNum = getSelectedDayNum();
-            ensureMonthData(monthKey);
+        async function removePending(taskIdx) {
+            if (_pendingBusy) return;
+            _pendingBusy = true;
+            try {
+                const monthKey = getSelectedMonthKey();
+                const dayNum = getSelectedDayNum();
+                ensureMonthData(monthKey);
 
-            const task = rewards[monthKey].tasks[taskIdx];
-            const currentCount = parseInt(task.pending[dayNum] || 0);
-            const newCount = Math.max(0, currentCount - 1);
-            if (newCount > 0) {
-                task.pending[dayNum] = newCount;
-            } else {
-                delete task.pending[dayNum];
+                const task = rewards[monthKey].tasks[taskIdx];
+                const currentCount = parseInt(task.pending[dayNum] || 0);
+                const newCount = Math.max(0, currentCount - 1);
+                if (newCount > 0) {
+                    task.pending[dayNum] = newCount;
+                } else {
+                    delete task.pending[dayNum];
+                }
+                renderTodayTasks();
+
+                await apiPost({ action: 'updateReward', month: monthKey, taskName: task.name, points: task.points, day: dayNum, count: newCount, sheetName: '待確認' });
+            } finally {
+                _pendingBusy = false;
             }
-
-            apiPost({ action: 'updateReward', month: monthKey, taskName: task.name, points: task.points, day: dayNum, count: newCount, sheetName: '待確認' });
-            renderTodayTasks();
         }
 
         function approveTask(taskIdx) {
@@ -3465,19 +3597,58 @@
             openModal('dayDetailModal');
         }
 
-        function renderLevelBadge() {
-            const totalShells = Object.values(rewards).reduce((sum, m) => sum + (m.total || 0), 0);
-            const totalDiamonds = Math.floor(totalShells / 10);
-            const remainderShells = totalShells % 10;
+        // 主題關卡系統
+        let currentLevelTheme = 'book';   // 當前主題
+        let levelThemeStartShells = 0;     // 主題開始時的累積貝殼數
 
-            const levels = [
-                { emoji: '🌱', name: '小書蟲', min: 0, max: 10, next: '🌿' },
-                { emoji: '🌿', name: '閱讀新星', min: 10, max: 30, next: '🌳' },
-                { emoji: '🌳', name: '知識探險家', min: 30, max: 60, next: '🏆' },
-                { emoji: '🏆', name: '閱讀達人', min: 60, max: 100, next: '👑' },
-                { emoji: '👑', name: '書香大師', min: 100, max: 150, next: '🌟' },
-                { emoji: '🌟', name: '超級閱讀王', min: 150, max: 200, next: '🎆' }
-            ];
+        const LEVEL_THEMES = {
+            book: {
+                name: '閱讀冒險',
+                target: 200,
+                levels: [
+                    { emoji: '🌱', name: '小書蟲', min: 0, max: 10, next: '🌿' },
+                    { emoji: '🌿', name: '閱讀新星', min: 10, max: 30, next: '🌳' },
+                    { emoji: '🌳', name: '知識探險家', min: 30, max: 60, next: '🏆' },
+                    { emoji: '🏆', name: '閱讀達人', min: 60, max: 100, next: '👑' },
+                    { emoji: '👑', name: '書香大師', min: 100, max: 150, next: '🌟' },
+                    { emoji: '🌟', name: '超級閱讀王', min: 150, max: 200, next: '🏅' }
+                ]
+            },
+            mario: {
+                name: '瑪利歐賽車',
+                target: 250,
+                levels: [
+                    { emoji: '🏎️', name: '新手車手', min: 0, max: 10, next: '🍄' },
+                    { emoji: '🍄', name: '蘑菇加速', min: 10, max: 25, next: '⭐' },
+                    { emoji: '⭐', name: '無敵星星', min: 25, max: 50, next: '🐢' },
+                    { emoji: '🐢', name: '綠龜殼達人', min: 50, max: 80, next: '🏆' },
+                    { emoji: '🏆', name: '金盃冠軍', min: 80, max: 115, next: '👸' },
+                    { emoji: '👸', name: '公主救援者', min: 115, max: 150, next: '🔥' },
+                    { emoji: '🔥', name: '火焰瑪利歐', min: 150, max: 190, next: '🌈' },
+                    { emoji: '🌈', name: '彩虹賽道王', min: 190, max: 220, next: '🐉' },
+                    { emoji: '🐉', name: '庫巴終結者', min: 220, max: 250, next: '🏅' }
+                ]
+            }
+        };
+
+        function getThemeLevels() {
+            return (LEVEL_THEMES[currentLevelTheme] || LEVEL_THEMES.book).levels;
+        }
+
+        function getThemeDiamonds() {
+            const allTimeShells = Object.values(rewards).reduce((sum, m) => sum + (m.total || 0), 0);
+            return Math.floor((allTimeShells - levelThemeStartShells) / 10);
+        }
+
+        function renderLevelBadge() {
+            const themeDiamonds = getThemeDiamonds();
+            const allTimeShells = Object.values(rewards).reduce((sum, m) => sum + (m.total || 0), 0);
+            const themeShells = allTimeShells - levelThemeStartShells;
+            const totalDiamonds = themeDiamonds;
+            const displayDiamonds = totalDiamonds;
+            const remainderShells = themeShells % 10;
+
+            const levels = getThemeLevels();
 
             let level = levels[0];
             for (let i = levels.length - 1; i >= 0; i--) {
@@ -3492,51 +3663,134 @@
             const iconEl = document.getElementById('levelIconBig');
             if (iconEl) iconEl.textContent = level.emoji;
             document.getElementById('levelName').textContent = level.name;
-            document.getElementById('totalDiamondsDisplay').textContent = totalDiamonds;
+            document.getElementById('totalDiamondsDisplay').textContent = displayDiamonds;
             document.getElementById('totalShellsDisplay').textContent = remainderShells;
             document.getElementById('levelProgress').textContent = `${totalDiamonds} / ${level.max} 💎`;
-            document.getElementById('nextLevelHint').textContent = totalDiamonds >= 150 ? '已滿級！' : `下一級：${level.next}`;
+            const maxLevel = levels[levels.length - 1];
+            document.getElementById('nextLevelHint').textContent = totalDiamonds >= maxLevel.min
+                ? (rewardMode === 'parent' ? '🎉 全部通關！點我換主題' : '🎉 全部通關！')
+                : `下一級：${level.next} 點我偷看`;
             document.getElementById('levelProgressBar').style.width = `${Math.min(100, progressPercent)}%`;
         }
 
         function showLevelsModal() {
-            const totalShells = Object.values(rewards).reduce((sum, m) => sum + (m.total || 0), 0);
-            const totalDiamonds = Math.floor(totalShells / 10);
+            const totalDiamonds = getThemeDiamonds();
+            const levels = getThemeLevels();
+            const themeName = (LEVEL_THEMES[currentLevelTheme] || LEVEL_THEMES.book).name;
 
-            const levels = [
-                { emoji: '🌱', name: '小書蟲', min: 0, max: 10 },
-                { emoji: '🌿', name: '閱讀新星', min: 10, max: 30 },
-                { emoji: '🌳', name: '知識探險家', min: 30, max: 60 },
-                { emoji: '🏆', name: '閱讀達人', min: 60, max: 100 },
-                { emoji: '👑', name: '書香大師', min: 100, max: 150 },
-                { emoji: '🌟', name: '超級閱讀王', min: 150, max: 200 },
-                { emoji: '🎆', name: '傳說中的讀書神', min: 200, max: 999 }
-            ];
+            // 找到當前等級索引
+            let currentIdx = 0;
+            for (let i = levels.length - 1; i >= 0; i--) {
+                if (totalDiamonds >= levels[i].min) {
+                    currentIdx = i;
+                    break;
+                }
+            }
 
-            let html = '<div style="font-size:13px; color:var(--color-text-light); text-align:center; margin-bottom:12px;">目前累計 <strong style="color:var(--color-primary);">' + totalDiamonds + ' 💎</strong></div>';
+            let html = `<div style="font-size:14px; font-weight:700; text-align:center; margin-bottom:4px;">🎮 ${themeName}</div>`;
+            html += '<div style="font-size:13px; color:var(--color-text-light); text-align:center; margin-bottom:16px;">本關卡累計 <strong style="color:var(--color-primary);">' + totalDiamonds + ' 💎</strong></div>';
 
-            levels.forEach(lv => {
-                const isCurrent = totalDiamonds >= lv.min && totalDiamonds < lv.max;
-                const isReached = totalDiamonds >= lv.min;
-                const bg = isCurrent ? 'linear-gradient(135deg, #667eea, #764ba2)' : (isReached ? 'var(--color-success)' : 'var(--color-bg)');
-                const color = isCurrent ? 'white' : (isReached ? '#155724' : 'var(--color-text-light)');
-                const border = isCurrent ? '2px solid #FFD700' : '1px solid var(--color-border)';
+            // 顯示所有等級（已達成 ✅、目前 👈、下一級 🔒 + 還差提示、其餘 🔒）
+            levels.forEach((lv, idx) => {
+                const isCurrent = idx === currentIdx;
+                const isReached = totalDiamonds >= lv.min && idx < currentIdx;
+                const isNext = idx === currentIdx + 1;
+
+                let bg, color, border, badge;
+                if (isCurrent) {
+                    bg = 'linear-gradient(135deg, #667eea, #764ba2)';
+                    color = 'white';
+                    border = '2px solid #FFD700';
+                    badge = '👈 目前';
+                } else if (isReached) {
+                    bg = 'var(--color-success)';
+                    color = '#155724';
+                    border = '1px solid var(--color-border)';
+                    badge = '✅';
+                } else {
+                    bg = 'var(--color-bg)';
+                    color = 'var(--color-text-light)';
+                    border = '1px solid var(--color-border)';
+                    badge = '🔒';
+                }
+
+                const needed = isNext ? lv.min - totalDiamonds : 0;
 
                 html += `
                 <div style="display:flex; align-items:center; gap:12px; padding:12px; border-radius:12px; margin-bottom:8px; background:${bg}; color:${color}; border:${border};">
-                    <div style="font-size:36px; line-height:1;">${lv.emoji}</div>
+                    <div style="font-size:36px; line-height:1;${!isReached && !isCurrent ? ' filter:grayscale(0.3);' : ''}">${lv.emoji}</div>
                     <div style="flex:1;">
                         <div style="font-weight:700; font-size:15px;">${lv.name}</div>
-                        <div style="font-size:12px; opacity:0.8;">${lv.min} ~ ${lv.max === 999 ? '∞' : lv.max} 💎</div>
+                        <div style="font-size:12px; opacity:0.8;">${lv.min} ~ ${lv.max} 💎</div>
+                        ${isNext ? `<div style="font-size:12px; color:var(--color-primary); margin-top:2px; font-weight:600;">還差 ${needed} 💎</div>` : ''}
                     </div>
-                    <div style="font-size:13px; font-weight:600;">
-                        ${isCurrent ? '👈 目前' : (isReached ? '✅' : '🔒')}
-                    </div>
+                    <div style="font-size:13px; font-weight:600;">${badge}</div>
                 </div>`;
             });
 
+            // 全部通關
+            const maxLevel = levels[levels.length - 1];
+            if (totalDiamonds >= maxLevel.min) {
+                html += `<div style="text-align:center; font-size:14px; font-weight:700; color:var(--color-primary); margin-top:12px;">🎉 恭喜！「${themeName}」全部通關！</div>`;
+                if (rewardMode === 'parent') {
+                    html += `<div style="text-align:center; margin-top:8px;">
+                        <button onclick="showThemePicker()" style="padding:8px 16px; border:none; border-radius:10px; background:linear-gradient(135deg, #667eea, #764ba2); color:white; font-size:13px; font-weight:700; cursor:pointer;">🎮 開始新主題</button>
+                    </div>`;
+                }
+            }
+
             document.getElementById('levelsBody').innerHTML = html;
             openModal('levelsModal');
+        }
+
+        function showThemePicker() {
+            if (parentOnly()) return;
+            // 必須通關才能換主題
+            const levels = getThemeLevels();
+            const maxLevel = levels[levels.length - 1];
+            if (getThemeDiamonds() < maxLevel.min) {
+                showToast('❌ 還沒通關，不能換主題喔！');
+                return;
+            }
+            let html = '<div style="font-size:14px; font-weight:700; text-align:center; margin-bottom:12px;">選擇新關卡主題</div>';
+            Object.entries(LEVEL_THEMES).forEach(([key, theme]) => {
+                const isCurrent = key === currentLevelTheme;
+                const firstEmoji = theme.levels[0].emoji;
+                const lastEmoji = theme.levels[theme.levels.length - 1].emoji;
+                html += `
+                    <div onclick="${isCurrent ? '' : `switchTheme('${key}')`}" style="display:flex; align-items:center; gap:12px; padding:12px; border-radius:12px; margin-bottom:8px; background:${isCurrent ? 'var(--color-bg)' : 'white'}; border:1px solid var(--color-border); cursor:${isCurrent ? 'default' : 'pointer'}; opacity:${isCurrent ? '0.5' : '1'};">
+                        <div style="font-size:28px;">${firstEmoji}→${lastEmoji}</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:700;">${theme.name}</div>
+                            <div style="font-size:11px; color:var(--color-text-light);">${theme.levels.length} 關</div>
+                        </div>
+                        ${isCurrent ? '<span style="font-size:12px; color:var(--color-text-light);">目前</span>' : '<span style="font-size:12px; color:var(--color-primary); font-weight:600;">選擇</span>'}
+                    </div>`;
+            });
+            document.getElementById('levelsBody').innerHTML = html;
+        }
+
+        function switchTheme(themeKey) {
+            if (parentOnly()) return;
+            const levels = getThemeLevels();
+            const maxLevel = levels[levels.length - 1];
+            if (getThemeDiamonds() < maxLevel.min) {
+                showToast('❌ 還沒通關，不能換主題喔！');
+                return;
+            }
+            if (!confirm(`確定要切換到「${LEVEL_THEMES[themeKey].name}」主題嗎？關卡進度會重新開始！`)) return;
+
+            const allTimeShells = Object.values(rewards).reduce((sum, m) => sum + (m.total || 0), 0);
+            currentLevelTheme = themeKey;
+            levelThemeStartShells = allTimeShells;
+
+            // 儲存到設定
+            apiPost({ action: 'saveSetting', key: 'levelTheme', value: themeKey });
+            apiPost({ action: 'saveSetting', key: 'levelThemeStartShells', value: String(allTimeShells) });
+
+            renderLevelBadge();
+            closeModal('levelsModal');
+            showToast(`🎮 已切換到「${LEVEL_THEMES[themeKey].name}」！`);
         }
 
         function renderMonthSelector() {
@@ -3580,30 +3834,45 @@
                 dailyHtml = activeDays.map(day => {
                     const pts = dailyPoints[day];
                     // 計算該日各任務明細
-                    const details = monthData.tasks
+                    const detailItems = monthData.tasks
                         .filter(t => t.daily && t.daily[day] && t.daily[day] > 0)
-                        .map(t => `${t.name} ×${t.daily[day]}`)
+                        .map(t => `<div style="padding:2px 0;">· ${t.name} ×${t.daily[day]} = ${t.daily[day] * t.points} 🐚</div>`);
+                    const detailsSummary = monthData.tasks
+                        .filter(t => t.daily && t.daily[day] && t.daily[day] > 0)
+                        .map(t => t.name)
                         .join('、');
+                    const uid = `hist_${selectedMonth}_${day}`;
                     return `
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.15); font-size:12px;">
-                            <div>
-                                <span style="font-weight:600;">${parseInt(month)}/${day}</span>
-                                <span style="opacity:0.7; margin-left:6px;">${details}</span>
+                        <div style="border-bottom:1px solid rgba(255,255,255,0.15);">
+                            <div onclick="toggleHistDay('${uid}')" style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; font-size:12px; cursor:pointer; user-select:none;">
+                                <div>
+                                    <span id="${uid}_arrow" style="display:inline-block; transition:transform 0.2s; font-size:10px; margin-right:4px;">▶</span>
+                                    <span style="font-weight:600;">${parseInt(month)}/${day}</span>
+                                    <span style="opacity:0.55; margin-left:6px; font-size:11px;">${detailsSummary}</span>
+                                </div>
+                                <div style="font-weight:700; white-space:nowrap;">${pts} 🐚</div>
                             </div>
-                            <div style="font-weight:700; white-space:nowrap;">${pts} 🐚</div>
+                            <div id="${uid}" style="display:none; padding:2px 8px 6px 24px; font-size:11px; opacity:0.85;">
+                                ${detailItems.join('')}
+                            </div>
                         </div>`;
                 }).join('');
             } else {
                 dailyHtml = '<div style="text-align:center; font-size:12px; opacity:0.7; padding:8px;">這個月沒有打卡紀錄</div>';
             }
 
-            // 月結轉存按鈕（家長模式限定）
-            const depositBtnHtml = rewardMode === 'parent' && monthData.total > 0 ? `
+            // 月結轉存按鈕（家長模式限定，已結算則顯示提示）
+            let depositBtnHtml = '';
+            if (monthData.deposited) {
+                depositBtnHtml = `<div style="margin-top:8px; text-align:center; font-size:13px; color:rgba(255,255,255,0.7);">✅ 本月已結算轉存百寶箱</div>`;
+            } else if (rewardMode === 'parent' && monthData.total > 0) {
+                depositBtnHtml = `
                 <div style="margin-top:8px; text-align:center;" class="parent-only">
                     <button onclick="depositMonthToTreasure('${selectedMonth}')" style="padding:8px 20px; border:none; border-radius:10px; background:linear-gradient(135deg, #FFD700, #FFA500); color:white; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(255,165,0,0.3);">
                         🎒 月結轉存百寶箱 (${diamonds}💎 + ${shells}🐚)
                     </button>
-                </div>` : '';
+                </div>`;
+            }
 
             let html = `
                 <div style="background:rgba(255,255,255,0.2); border-radius:10px; padding:12px;">
@@ -3611,7 +3880,10 @@
                         <div style="font-weight:700;">${year}年${parseInt(month)}月</div>
                         <div style="font-size:18px; font-weight:800;">${monthData.total} 🐚</div>
                     </div>
-                    <div style="font-size:12px; opacity:0.8; margin-bottom:8px;">= ${diamonds} 💎 + ${shells} 🐚</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <div style="font-size:12px; opacity:0.8;">= ${diamonds} 💎 + ${shells} 🐚</div>
+                        <button id="toggleAllHistBtn" onclick="toggleAllHistDays()" style="padding:3px 10px; border:none; border-radius:6px; background:rgba(255,255,255,0.25); color:inherit; font-size:11px; cursor:pointer;">📖 全部展開</button>
+                    </div>
                     <div style="border-top:1px solid rgba(255,255,255,0.2); padding-top:6px;">
                         ${dailyHtml}
                     </div>
@@ -3620,6 +3892,33 @@
             `;
 
             document.getElementById('historySummary').innerHTML = html;
+        }
+
+        function toggleHistDay(uid) {
+            const el = document.getElementById(uid);
+            const arrow = document.getElementById(uid + '_arrow');
+            if (!el) return;
+            const open = el.style.display !== 'none';
+            el.style.display = open ? 'none' : 'block';
+            if (arrow) arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(90deg)';
+        }
+
+        function toggleAllHistDays() {
+            const container = document.getElementById('historySummary');
+            if (!container) return;
+            const items = container.querySelectorAll('[id^="hist_"]');
+            // Check if any are open
+            let anyOpen = false;
+            items.forEach(el => { if (!el.id.endsWith('_arrow') && el.style.display !== 'none') anyOpen = true; });
+            items.forEach(el => {
+                if (el.id.endsWith('_arrow')) {
+                    el.style.transform = anyOpen ? 'rotate(0deg)' : 'rotate(90deg)';
+                } else {
+                    el.style.display = anyOpen ? 'none' : 'block';
+                }
+            });
+            const btn = document.getElementById('toggleAllHistBtn');
+            if (btn) btn.textContent = anyOpen ? '📖 全部展開' : '📕 全部收合';
         }
 
         function renderFunStats() {
@@ -3788,18 +4087,30 @@
 
             // 存入鑽石
             if (diamonds > 0) {
-                const entryD = { id: Date.now(), date: today, type: '存入', diamonds: diamonds, shells: 0, note: note, status: '已確認' };
+                const tempIdD = Date.now();
+                const entryD = { id: tempIdD, date: today, type: '存入', diamonds: diamonds, shells: 0, note: note, status: '已確認' };
                 treasureData.push(entryD);
-                apiPost({ action: 'addTreasure', date: today, type: '存入', diamonds: diamonds, shells: 0, note: note, status: '已確認' });
+                apiPost({ action: 'addTreasure', date: today, type: '存入', diamonds: diamonds, shells: 0, note: note, status: '已確認' }).then(result => {
+                    if (result && result.id) { const e = treasureData.find(t => t.id === tempIdD); if (e) e.id = result.id; }
+                });
             }
             // 存入貝殼
             if (shells > 0) {
-                const entryS = { id: Date.now() + 1, date: today, type: '存入', diamonds: 0, shells: shells, note: note, status: '已確認' };
+                const tempIdS = Date.now() + 1;
+                const entryS = { id: tempIdS, date: today, type: '存入', diamonds: 0, shells: shells, note: note, status: '已確認' };
                 treasureData.push(entryS);
-                apiPost({ action: 'addTreasure', date: today, type: '存入', diamonds: 0, shells: shells, note: note, status: '已確認' });
+                apiPost({ action: 'addTreasure', date: today, type: '存入', diamonds: 0, shells: shells, note: note, status: '已確認' }).then(result => {
+                    if (result && result.id) { const e = treasureData.find(t => t.id === tempIdS); if (e) e.id = result.id; }
+                });
             }
 
+            // 標記該月已結算
+            monthData.deposited = true;
+
             renderTreasure();
+            renderLevelBadge();
+            renderMonthlyCalendar();
+            renderHistorySummary();
             showToast(`✅ 已轉存 ${diamonds}💎 + ${shells}🐚 到百寶箱！`);
         }
 
@@ -3814,8 +4125,9 @@
             const shells = currency === 'shell' ? amount : 0;
             const today = new Date().toISOString().split('T')[0];
 
+            const tempId = Date.now();
             const newEntry = {
-                id: Date.now(),
+                id: tempId,
                 date: today,
                 type: '存入',
                 diamonds: diamonds,
@@ -3826,7 +4138,9 @@
             treasureData.push(newEntry);
             renderTreasure();
 
-            apiPost({ action: 'addTreasure', date: today, type: '存入', diamonds, shells, note, status: '已確認' });
+            apiPost({ action: 'addTreasure', date: today, type: '存入', diamonds, shells, note, status: '已確認' }).then(result => {
+                if (result && result.id) { const e = treasureData.find(t => t.id === tempId); if (e) e.id = result.id; }
+            });
             document.getElementById('depositAmount').value = '1';
             document.getElementById('depositNote').value = '';
             showToast(`✅ 已存入 ${amount} ${currency === 'diamond' ? '💎' : '🐚'}`);
@@ -3848,8 +4162,9 @@
             const shells = currency === 'shell' ? -amount : 0;
             const today = new Date().toISOString().split('T')[0];
 
+            const tempId = Date.now();
             const newEntry = {
-                id: Date.now(),
+                id: tempId,
                 date: today,
                 type: '提領',
                 diamonds: diamonds,
@@ -3860,7 +4175,12 @@
             treasureData.push(newEntry);
             renderTreasure();
 
-            apiPost({ action: 'addTreasure', date: today, type: '提領', diamonds, shells, note, status: '待核准' });
+            apiPost({ action: 'addTreasure', date: today, type: '提領', diamonds, shells, note, status: '待核准' }).then(result => {
+                if (result && result.id) {
+                    const entry = treasureData.find(t => t.id === tempId);
+                    if (entry) entry.id = result.id;
+                }
+            });
             document.getElementById('withdrawAmount').value = '1';
             document.getElementById('withdrawNote').value = '';
             showToast('📨 提領申請已送出，等待家長核准');
