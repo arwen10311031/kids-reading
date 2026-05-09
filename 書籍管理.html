@@ -1272,7 +1272,27 @@
                             <option value="title">書名</option>
                         </select>
                         <button onclick="clearAllFilters()" style="padding:8px 14px; border:1px solid var(--color-border); border-radius:var(--radius); background:white; font-size:13px; cursor:pointer; white-space:nowrap; color:var(--color-text-light);">🗑 清除篩選</button>
+                        <button id="priceCalcBtn" onclick="togglePriceCalcMode()" class="parent-only" style="padding:8px 14px; border:1px solid var(--color-border); border-radius:var(--radius); background:white; font-size:13px; cursor:pointer; white-space:nowrap; color:var(--color-text-light);">🧮 勾選計價</button>
                     </div>
+                </div>
+
+                <div id="priceCalcBar" style="display:none; position:sticky; top:0; z-index:50; background:linear-gradient(135deg,#667eea,#764ba2); color:white; padding:12px 16px; border-radius:12px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <div>
+                            <span style="font-weight:600;">🧮 已選 <span id="calcCount">0</span> 本</span>
+                            <span style="margin-left:12px;">買入合計: <strong id="calcTotal">NT $0</strong></span>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button onclick="selectAllVisible()" style="padding:6px 12px; border:none; border-radius:6px; background:rgba(255,255,255,0.25); color:white; font-size:12px; cursor:pointer;">全選</button>
+                            <button onclick="deselectAll()" style="padding:6px 12px; border:none; border-radius:6px; background:rgba(255,255,255,0.25); color:white; font-size:12px; cursor:pointer;">取消全選</button>
+                            <button onclick="togglePriceCalcMode()" style="padding:6px 12px; border:none; border-radius:6px; background:rgba(255,255,255,0.4); color:white; font-size:12px; cursor:pointer; font-weight:600;">✕ 結束</button>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px; margin-top:10px; align-items:center;">
+                        <input type="text" id="calcSmartSearch" class="form-input" placeholder="智慧搜尋：怪傑1-10、peppa pig3-8..." style="flex:1; padding:8px 12px; border-radius:8px; border:none; font-size:13px;" oninput="smartCalcSearch()">
+                        <button onclick="document.getElementById('calcSmartSearch').value=''; smartCalcSearch();" style="padding:6px 12px; border:none; border-radius:6px; background:rgba(255,255,255,0.25); color:white; font-size:12px; cursor:pointer;">清除</button>
+                    </div>
+                    <div id="calcSmartResult" style="display:none; margin-top:6px; font-size:12px; color:rgba(255,255,255,0.85);"></div>
                 </div>
 
                 <div id="bookList" class="book-list">
@@ -1283,9 +1303,10 @@
             <!-- TAB 2: ADD BOOK -->
             <div id="addBookTab" class="tab-content">
                 <form id="addBookForm">
-                    <div class="form-group">
+                    <div class="form-group" style="position:relative;">
                         <label class="form-label">📖 書名</label>
-                        <input type="text" id="titleInput" class="form-input" required oninput="checkDuplicates()">
+                        <input type="text" id="titleInput" class="form-input" required oninput="checkDuplicates(); showTitleSuggestions()" autocomplete="off">
+                        <div id="titleSuggestions" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:100; background:#fff; border:1px solid #ddd; border-radius:8px; max-height:200px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
                         <div id="duplicateWarning" style="display:none; background:#FFF3CD; border:1px solid #FFE69C; border-radius:8px; padding:8px 12px; margin-top:6px; font-size:13px;">
                             <div style="font-weight:600; color:#856404; margin-bottom:4px;">⚠️ 可能重複的書籍：</div>
                             <div id="duplicateList"></div>
@@ -1873,6 +1894,8 @@
         let rewards = {};
         let rewardTasks = [];
         let currentEditId = null;
+        let priceCalcMode = false;
+        let priceCalcSelected = new Set();
         let rewardMode = 'kid';
         let filters = {
             search: '',
@@ -2237,16 +2260,49 @@
             let filtered = books;
 
             // Search filter (also matches category keywords)
+            // 支援模糊搜尋：「怪傑1」可找到「怪傑左羅力1」
+            // 也支援範圍：「怪傑1-10」可找到怪傑左羅力1~10
             if (filters.search) {
                 const search = filters.search.toLowerCase();
+                // 嘗試解析範圍格式：「怪傑1-10」→ keyword=怪傑, range=1~10
+                const rangeMatch = search.match(/^(.+?)(\d+)\s*[-~～至到]\s*(\d+)$/);
+                let searchKeyword = search;
+                let searchRange = null;
+                if (rangeMatch) {
+                    searchKeyword = rangeMatch[1].replace(/[\s\-_]+$/, '').trim();
+                    const from = parseInt(rangeMatch[2]);
+                    const to = parseInt(rangeMatch[3]);
+                    searchRange = new Set();
+                    for (let i = Math.min(from, to); i <= Math.max(from, to); i++) searchRange.add(i);
+                }
+
+                // 把搜尋詞拆成文字片段和數字片段
+                const searchParts = searchKeyword.match(/[^\d]+|\d+/g) || [searchKeyword];
+
                 filtered = filtered.filter(b => {
-                    // Direct text match
-                    if (b.title.toLowerCase().includes(search) ||
-                        b.publisher.toLowerCase().includes(search) ||
-                        (b.note && b.note.toLowerCase().includes(search))) {
+                    const title = b.title.toLowerCase();
+                    const pub = b.publisher.toLowerCase();
+                    const note = (b.note || '').toLowerCase();
+                    const text = title + ' ' + pub + ' ' + note;
+
+                    // 精確子串匹配（原本的邏輯）
+                    if (title.includes(search) || pub.includes(search) || note.includes(search)) {
                         return true;
                     }
-                    // Category match: if search term matches a category name, include books in that category
+
+                    // 範圍匹配：關鍵字 + 數字在範圍內
+                    if (searchRange) {
+                        if (!title.includes(searchKeyword)) return false;
+                        const nums = b.title.match(/\d+/g);
+                        if (!nums) return false;
+                        return nums.some(n => searchRange.has(parseInt(n)));
+                    }
+
+                    // 分詞模糊匹配：每個片段都要出現在書名中
+                    const allPartsMatch = searchParts.every(part => text.includes(part));
+                    if (allPartsMatch) return true;
+
+                    // Category match
                     const bookCats = getBookCategories(b.title);
                     return bookCats.some(cat => cat.toLowerCase().includes(search));
                 });
@@ -2307,6 +2363,143 @@
             return filtered;
         }
 
+        function togglePriceCalcMode() {
+            priceCalcMode = !priceCalcMode;
+            const bar = document.getElementById('priceCalcBar');
+            const btn = document.getElementById('priceCalcBtn');
+            if (priceCalcMode) {
+                bar.style.display = 'block';
+                btn.style.background = '#667eea';
+                btn.style.color = 'white';
+                priceCalcSelected.clear();
+            } else {
+                bar.style.display = 'none';
+                btn.style.background = 'white';
+                btn.style.color = 'var(--color-text-light)';
+                priceCalcSelected.clear();
+            }
+            renderLibrary();
+        }
+
+        function togglePriceCalcBook(id, ev) {
+            if (ev) ev.stopPropagation();
+            if (priceCalcSelected.has(id)) {
+                priceCalcSelected.delete(id);
+            } else {
+                priceCalcSelected.add(id);
+            }
+            updatePriceCalcBar();
+            // 更新勾選狀態而不重新渲染整個列表
+            const cb = document.getElementById('calcCb_' + id);
+            if (cb) cb.checked = priceCalcSelected.has(id);
+            const card = cb ? cb.closest('.book-card') : null;
+            if (card) card.style.borderColor = priceCalcSelected.has(id) ? '#667eea' : '';
+        }
+
+        function updatePriceCalcBar() {
+            let total = 0;
+            priceCalcSelected.forEach(id => {
+                const b = books.find(bk => bk.id === id);
+                if (b) total += (b.price || 0);
+            });
+            document.getElementById('calcCount').textContent = priceCalcSelected.size;
+            document.getElementById('calcTotal').textContent = 'NT ' + fmtMoney(total);
+        }
+
+        function selectAllVisible() {
+            const filtered = filterBooks();
+            filtered.forEach(b => priceCalcSelected.add(b.id));
+            updatePriceCalcBar();
+            renderLibrary();
+        }
+
+        function deselectAll() {
+            priceCalcSelected.clear();
+            updatePriceCalcBar();
+            renderLibrary();
+        }
+
+        function smartCalcSearch() {
+            const raw = document.getElementById('calcSmartSearch').value.trim();
+            const resultEl = document.getElementById('calcSmartResult');
+            if (!raw) {
+                resultEl.style.display = 'none';
+                priceCalcSelected.clear();
+                updatePriceCalcBar();
+                renderLibrary();
+                return;
+            }
+
+            // 解析輸入：把所有數字部分和文字部分分開
+            // 「怪傑1-10」→ 關鍵字「怪傑」, 範圍 1~10
+            // 「peppa pig 3-8」→ 關鍵字「peppa pig」, 範圍 3~8
+            // 「左羅力1,3,5」→ 關鍵字「左羅力」, 列表 [1,3,5]
+            // 「屁屁偵探」→ 關鍵字「屁屁偵探」, 無數字限制
+
+            // 先嘗試抓尾部的數字範圍或列表
+            let keyword = raw;
+            let rangeNums = null;
+
+            // 範圍格式：任意文字 + 數字-數字（允許中間有各種分隔）
+            const rangeMatch = raw.match(/^(.+?)[\s\-_]*?(\d+)\s*[-~～至到]\s*(\d+)\s*$/);
+            // 列表格式：任意文字 + 逗號分隔數字
+            const listMatch = raw.match(/^(.+?)[\s\-_]*?([\d][,，\s\d]*[\d])\s*$/);
+
+            if (rangeMatch) {
+                keyword = rangeMatch[1].replace(/[\s\-_]+$/, '').trim();
+                const from = parseInt(rangeMatch[2]);
+                const to = parseInt(rangeMatch[3]);
+                rangeNums = new Set();
+                for (let i = Math.min(from, to); i <= Math.max(from, to); i++) rangeNums.add(i);
+            } else if (listMatch && /\d+[,，]\d+/.test(listMatch[2])) {
+                keyword = listMatch[1].replace(/[\s\-_]+$/, '').trim();
+                rangeNums = new Set(listMatch[2].split(/[,，\s]+/).map(Number).filter(n => !isNaN(n)));
+            }
+
+            // 如果關鍵字為空（使用者只輸入數字），用原始輸入
+            if (!keyword) keyword = raw;
+            const lowerKey = keyword.toLowerCase();
+
+            // 模糊搜尋：關鍵字的每個字都要出現在書名中（不要求連續）
+            function fuzzyMatch(title) {
+                const lt = title.toLowerCase();
+                // 先試精確包含
+                if (lt.includes(lowerKey)) return true;
+                // 再試每個字元都出現（順序匹配）
+                let pos = 0;
+                for (const ch of lowerKey) {
+                    const found = lt.indexOf(ch, pos);
+                    if (found === -1) return false;
+                    pos = found + 1;
+                }
+                return true;
+            }
+
+            // 搜尋匹配的書
+            const matched = books.filter(b => {
+                if (!b.title) return false;
+                if (!fuzzyMatch(b.title)) return false;
+                if (!rangeNums) return true;
+                // 從書名中提取所有數字，看是否有任一在指定範圍內
+                const nums = b.title.match(/\d+/g);
+                if (!nums) return false;
+                return nums.some(n => rangeNums.has(parseInt(n)));
+            });
+
+            // 自動勾選匹配的書
+            priceCalcSelected.clear();
+            matched.forEach(b => priceCalcSelected.add(b.id));
+            updatePriceCalcBar();
+
+            const preview = matched.slice(0, 5).map(b => b.title).join('、');
+            resultEl.textContent = matched.length > 0
+                ? `找到 ${matched.length} 本：${preview}${matched.length > 5 ? '...' : ''}`
+                : `找不到符合「${keyword}」的書`;
+            resultEl.style.display = 'block';
+
+            renderLibrary();
+        }
+
         function renderLibrary() {
             const filtered = filterBooks();
             const bookList = document.getElementById('bookList');
@@ -2322,8 +2515,9 @@
             }
 
             bookList.innerHTML = filtered.map(book => `
-                <div class="book-card" onclick="${userMode === 'kid' ? 'showBookDetail(' + book.id + ')' : 'openEditBook(' + book.id + ')'}">
+                <div class="book-card" style="${priceCalcMode && priceCalcSelected.has(book.id) ? 'border-color:#667eea; background:#f8f7ff;' : ''}" onclick="${priceCalcMode ? 'togglePriceCalcBook(' + book.id + ', event)' : (userMode === 'kid' ? 'showBookDetail(' + book.id + ')' : 'openEditBook(' + book.id + ')')}">
                     <div class="book-card-header">
+                        ${priceCalcMode ? `<input type="checkbox" id="calcCb_${book.id}" ${priceCalcSelected.has(book.id) ? 'checked' : ''} onclick="togglePriceCalcBook(${book.id}, event)" style="width:20px; height:20px; margin-right:8px; cursor:pointer; flex-shrink:0; accent-color:#667eea;">` : ''}
                         <div class="book-title">${escapeHtml(book.title)}</div>
                         <div class="book-badges">
                             ${book.lang === 'en' ? '<span class="badge" style="background:#E3F2FD; color:#1565C0;">EN</span>' : '<span class="badge" style="background:#FFF3E0; color:#E65100;">中</span>'}
@@ -2612,6 +2806,102 @@
                 warning.style.display = 'none';
             }
         }
+
+        function showTitleSuggestions() {
+            const input = document.getElementById('titleInput');
+            const box = document.getElementById('titleSuggestions');
+            const val = input.value.trim();
+            if (val.length < 2) { box.style.display = 'none'; return; }
+
+            // 從現有書名中提取「系列前綴」並找匹配
+            const lowerVal = val.toLowerCase();
+            const seen = new Set();
+            const suggestions = [];
+
+            books.forEach(b => {
+                const t = b.title;
+                if (!t) return;
+                const lt = t.toLowerCase();
+                // 如果書名包含輸入的文字，取出共同前綴作為建議
+                if (lt.includes(lowerVal) || lowerVal.includes(lt.substring(0, Math.min(lt.length, lowerVal.length)))) {
+                    // 找出可能的系列前綴（到最後一個數字或分隔符之前的部分）
+                    const prefixMatch = t.match(/^(.+?)[\d\-\—\─第]+/);
+                    const prefix = prefixMatch ? prefixMatch[1] : t;
+                    const key = prefix + '|' + b.publisher + '|' + b.platform;
+                    if (!seen.has(t)) {
+                        seen.add(t);
+                        suggestions.push({
+                            title: t,
+                            prefix: prefix,
+                            publisher: b.publisher,
+                            platform: b.platform || b.publisher,
+                            price: b.price,
+                            lang: b.lang || 'zh'
+                        });
+                    }
+                }
+            });
+
+            if (suggestions.length === 0) { box.style.display = 'none'; return; }
+
+            box.innerHTML = suggestions.slice(0, 8).map((s, i) =>
+                `<div onclick="applyTitleSuggestion(${i})" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f0f0f0; font-size:14px; transition:background 0.15s;"
+                     onmouseenter="this.style.background='#f0f7ff'" onmouseleave="this.style.background='#fff'"
+                     data-title="${escapeHtml(s.title)}" data-publisher="${escapeHtml(s.publisher)}" data-platform="${escapeHtml(s.platform)}" data-price="${s.price}" data-lang="${s.lang}">
+                    <div style="font-weight:500;">${escapeHtml(s.title)}</div>
+                    <div style="font-size:11px; color:#888; margin-top:2px;">${escapeHtml(s.publisher)} · $${s.price}</div>
+                </div>`
+            ).join('');
+            box.style.display = 'block';
+        }
+
+        function applyTitleSuggestion(idx) {
+            const box = document.getElementById('titleSuggestions');
+            const items = box.querySelectorAll('[data-title]');
+            if (!items[idx]) return;
+            const item = items[idx];
+            const title = item.getAttribute('data-title');
+            const publisher = item.getAttribute('data-publisher');
+            const platform = item.getAttribute('data-platform');
+            const price = item.getAttribute('data-price');
+            const lang = item.getAttribute('data-lang');
+
+            // 帶入書名（使用者可繼續修改）
+            document.getElementById('titleInput').value = title;
+            // 帶入出版社
+            const pubSelect = document.getElementById('publisherInput');
+            if (pubSelect) {
+                for (let opt of pubSelect.options) {
+                    if (opt.value === publisher) { pubSelect.value = publisher; break; }
+                }
+            }
+            // 帶入平台
+            const platSelect = document.getElementById('platformInput');
+            if (platSelect) {
+                for (let opt of platSelect.options) {
+                    if (opt.value === platform) { platSelect.value = platform; break; }
+                }
+            }
+            // 帶入價格
+            if (price) document.getElementById('priceInput').value = price;
+            // 帶入語言
+            if (lang) document.getElementById('langInput').value = lang;
+
+            box.style.display = 'none';
+            // 游標移到書名末尾，方便修改
+            const input = document.getElementById('titleInput');
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+            checkDuplicates();
+        }
+
+        // 點擊其他地方時關閉建議
+        document.addEventListener('click', (e) => {
+            const box = document.getElementById('titleSuggestions');
+            if (box && !e.target.closest('#titleInput') && !e.target.closest('#titleSuggestions')) {
+                box.style.display = 'none';
+            }
+        });
 
         function populateAddFormDropdowns() {
             const pubs = [...new Set(books.map(b => b.publisher).filter(Boolean))].sort();
@@ -3207,48 +3497,35 @@
             container.innerHTML = html;
         }
 
-        let _pendingBusy = false;
-        async function addPending(taskIdx) {
-            if (_pendingBusy) return;
-            _pendingBusy = true;
-            try {
-                const monthKey = getSelectedMonthKey();
-                const dayNum = getSelectedDayNum();
-                ensureMonthData(monthKey);
+        function addPending(taskIdx) {
+            const monthKey = getSelectedMonthKey();
+            const dayNum = getSelectedDayNum();
+            ensureMonthData(monthKey);
 
-                const task = rewards[monthKey].tasks[taskIdx];
-                const currentCount = parseInt(task.pending[dayNum] || 0);
-                task.pending[dayNum] = currentCount + 1;
-                renderTodayTasks();
+            const task = rewards[monthKey].tasks[taskIdx];
+            const currentCount = parseInt(task.pending[dayNum] || 0);
+            task.pending[dayNum] = currentCount + 1;
+            renderTodayTasks();
 
-                await apiPost({ action: 'updateReward', month: monthKey, taskName: task.name, points: task.points, day: dayNum, count: task.pending[dayNum], sheetName: '待確認' });
-            } finally {
-                _pendingBusy = false;
-            }
+            apiPost({ action: 'updateReward', month: monthKey, taskName: task.name, points: task.points, day: dayNum, count: task.pending[dayNum], sheetName: '待確認' });
         }
 
-        async function removePending(taskIdx) {
-            if (_pendingBusy) return;
-            _pendingBusy = true;
-            try {
-                const monthKey = getSelectedMonthKey();
-                const dayNum = getSelectedDayNum();
-                ensureMonthData(monthKey);
+        function removePending(taskIdx) {
+            const monthKey = getSelectedMonthKey();
+            const dayNum = getSelectedDayNum();
+            ensureMonthData(monthKey);
 
-                const task = rewards[monthKey].tasks[taskIdx];
-                const currentCount = parseInt(task.pending[dayNum] || 0);
-                const newCount = Math.max(0, currentCount - 1);
-                if (newCount > 0) {
-                    task.pending[dayNum] = newCount;
-                } else {
-                    delete task.pending[dayNum];
-                }
-                renderTodayTasks();
-
-                await apiPost({ action: 'updateReward', month: monthKey, taskName: task.name, points: task.points, day: dayNum, count: newCount, sheetName: '待確認' });
-            } finally {
-                _pendingBusy = false;
+            const task = rewards[monthKey].tasks[taskIdx];
+            const currentCount = parseInt(task.pending[dayNum] || 0);
+            const newCount = Math.max(0, currentCount - 1);
+            if (newCount > 0) {
+                task.pending[dayNum] = newCount;
+            } else {
+                delete task.pending[dayNum];
             }
+            renderTodayTasks();
+
+            apiPost({ action: 'updateReward', month: monthKey, taskName: task.name, points: task.points, day: dayNum, count: newCount, sheetName: '待確認' });
         }
 
         function approveTask(taskIdx) {
