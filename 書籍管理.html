@@ -1267,6 +1267,8 @@
                         <select id="sortFilter" class="filter-select">
                             <option value="date-newest">購買日(新→舊)</option>
                             <option value="date-oldest">購買日(舊→新)</option>
+                            <option value="read-newest">閱讀日(新→舊)</option>
+                            <option value="read-oldest">閱讀日(舊→新)</option>
                             <option value="price-high">價格(高→低)</option>
                             <option value="price-low">價格(低→高)</option>
                             <option value="title">書名</option>
@@ -2139,6 +2141,19 @@
                 currentLevelTheme = String((data.settings || {}).levelTheme || 'book');
                 levelThemeStartShells = Number((data.settings || {}).levelThemeStartShells || 0);
 
+                // 一次性切換到寶可夢主題（若尚未切換）
+                if (currentLevelTheme !== 'pokemon') {
+                    // 從6月開始累積：只扣除6月之前的貝殼
+                    let preJuneShells = 0;
+                    Object.entries(rewards).forEach(([mk, m]) => {
+                        if (mk < '2026-06') preJuneShells += (m.total || 0);
+                    });
+                    currentLevelTheme = 'pokemon';
+                    levelThemeStartShells = preJuneShells;
+                    apiPost({ action: 'saveSetting', key: 'levelTheme', value: 'pokemon' });
+                    apiPost({ action: 'saveSetting', key: 'levelThemeStartShells', value: String(preJuneShells) });
+                }
+
                 // Treasure box
                 treasureData = data.treasure || [];
 
@@ -2349,6 +2364,22 @@
                         return new Date(b.purchaseDate) - new Date(a.purchaseDate);
                     case 'date-oldest':
                         return new Date(a.purchaseDate) - new Date(b.purchaseDate);
+                    case 'read-newest': {
+                        const aDate = a.readDate ? a.readDate.split(',')[0].trim() : '';
+                        const bDate = b.readDate ? b.readDate.split(',')[0].trim() : '';
+                        if (!aDate && !bDate) return 0;
+                        if (!aDate) return 1;  // 無閱讀日排後面
+                        if (!bDate) return -1;
+                        return new Date(bDate) - new Date(aDate);
+                    }
+                    case 'read-oldest': {
+                        const aDate = a.readDate ? a.readDate.split(',')[0].trim() : '';
+                        const bDate = b.readDate ? b.readDate.split(',')[0].trim() : '';
+                        if (!aDate && !bDate) return 0;
+                        if (!aDate) return 1;
+                        if (!bDate) return -1;
+                        return new Date(aDate) - new Date(bDate);
+                    }
                     case 'price-high':
                         return b.price - a.price;
                     case 'price-low':
@@ -3905,6 +3936,36 @@
                     { emoji: '🌈', name: '彩虹賽道王', min: 190, max: 220, next: '🐉' },
                     { emoji: '🐉', name: '庫巴終結者', min: 220, max: 250, next: '🏅' }
                 ]
+            },
+            pokemon: {
+                name: '寶可夢大師',
+                target: 250,
+                levels: [
+                    { emoji: '🥚', name: '神奇蛋', min: 0, max: 10, next: '🐛' },
+                    { emoji: '🐛', name: '綠毛蟲', min: 10, max: 25, next: '🔥' },
+                    { emoji: '🔥', name: '小火龍', min: 25, max: 50, next: '🐢' },
+                    { emoji: '🐢', name: '傑尼龜', min: 50, max: 80, next: '⚡' },
+                    { emoji: '⚡', name: '皮卡丘', min: 80, max: 115, next: '🌊' },
+                    { emoji: '🌊', name: '水箭龜', min: 115, max: 150, next: '🐉' },
+                    { emoji: '🐉', name: '快龍', min: 150, max: 190, next: '✨' },
+                    { emoji: '✨', name: '超夢', min: 190, max: 220, next: '🏆' },
+                    { emoji: '🏆', name: '寶可夢大師', min: 220, max: 250, next: '🏅' }
+                ]
+            },
+            robot: {
+                name: '機器人進化',
+                target: 250,
+                levels: [
+                    { emoji: '🔩', name: '零件收集者', min: 0, max: 10, next: '🔧' },
+                    { emoji: '🔧', name: '小小工匠', min: 10, max: 25, next: '🤖' },
+                    { emoji: '🤖', name: '迷你機器人', min: 25, max: 50, next: '🦾' },
+                    { emoji: '🦾', name: '鋼鐵手臂', min: 50, max: 80, next: '🛡️' },
+                    { emoji: '🛡️', name: '守護機甲', min: 80, max: 115, next: '🚀' },
+                    { emoji: '🚀', name: '火箭飛行者', min: 115, max: 150, next: '🛸' },
+                    { emoji: '🛸', name: 'UFO指揮官', min: 150, max: 190, next: '🌟' },
+                    { emoji: '🌟', name: '銀河戰士', min: 190, max: 220, next: '🏆' },
+                    { emoji: '🏆', name: '宇宙霸主', min: 220, max: 250, next: '🏅' }
+                ]
             }
         };
 
@@ -4259,6 +4320,11 @@
                 totalDiamonds += t.diamonds;
                 totalShells += t.shells;
             });
+
+            // 貝殼滿10自動換算成鑽石
+            const extraDiamonds = Math.floor(totalShells / 10);
+            totalDiamonds += extraDiamonds;
+            totalShells = totalShells % 10;
 
             document.getElementById('treasureDiamonds').textContent = totalDiamonds;
             document.getElementById('treasureShells').textContent = totalShells;
